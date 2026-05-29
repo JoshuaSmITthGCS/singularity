@@ -1,7 +1,12 @@
-import { WHOP_API_BASE, getWhopApiKey, getWhopProductId } from "@/lib/whop/config"
+import {
+  WHOP_API_BASE,
+  getWhopApiKey,
+  getWhopPlatformCompanyId,
+} from "@/lib/whop/config"
 
-// Thin Whop REST client. All Whop HTTP lives here so endpoint/field names can be
-// corrected in one place (see config.ts note on verifying against current docs).
+// Thin Whop REST client for the connected-accounts model. All Whop HTTP lives
+// here so endpoint/field names can be corrected in one place (see config.ts
+// note on verifying against current docs).
 
 async function whopFetch<T>(path: string, init: RequestInit): Promise<T> {
   const response = await fetch(`${WHOP_API_BASE}${path}`, {
@@ -26,28 +31,93 @@ async function whopFetch<T>(path: string, init: RequestInit): Promise<T> {
   return json as T
 }
 
-// Create a one-time plan priced to match the asset. Returns the Whop plan id.
-// Whop plans are priced in major units (dollars), so convert from cents.
-export async function createPlanForAsset(input: {
-  assetId: string
+// --- Developer connected accounts ---------------------------------------
+
+// Create a connected company under the platform parent. Returns the company id.
+export async function createConnectedCompany(input: {
+  email: string
   title: string
+}): Promise<string> {
+  const company = await whopFetch<{ id: string }>("/api/v2/companies", {
+    method: "POST",
+    body: JSON.stringify({
+      email: input.email,
+      title: input.title,
+      parent_company_id: getWhopPlatformCompanyId(),
+    }),
+  })
+
+  if (!company?.id) throw new Error("Whop company creation returned no id")
+  return company.id
+}
+
+// Create a hosted account link (KYC onboarding or the payout portal) for a
+// connected company. Returns the URL to redirect the developer to.
+export async function createAccountLink(input: {
+  companyId: string
+  useCase: "account_onboarding" | "payouts_portal"
+  returnUrl: string
+  refreshUrl: string
+}): Promise<string> {
+  const link = await whopFetch<{ url: string }>("/api/v2/account_links", {
+    method: "POST",
+    body: JSON.stringify({
+      company_id: input.companyId,
+      use_case: input.useCase,
+      return_url: input.returnUrl,
+      refresh_url: input.refreshUrl,
+    }),
+  })
+
+  if (!link?.url) throw new Error("Whop account link returned no url")
+  return link.url
+}
+
+// --- Asset products + checkout ------------------------------------------
+
+// Create a product on the developer's connected company. Returns product id.
+export async function createProductOnConnectedCompany(input: {
+  companyId: string
+  title: string
+  description: string
+}): Promise<string> {
+  const product = await whopFetch<{ id: string }>("/api/v2/products", {
+    method: "POST",
+    body: JSON.stringify({
+      company_id: input.companyId,
+      title: input.title,
+      description: input.description,
+    }),
+  })
+
+  if (!product?.id) throw new Error("Whop product creation returned no id")
+  return product.id
+}
+
+// Create a one-time plan on the connected company. application_fee_amount is
+// the platform's cut (Whop routes the remainder to the developer's balance).
+// Whop prices in major units, so convert from cents. Returns the plan id.
+export async function createPlanOnConnectedCompany(input: {
+  companyId: string
+  productId: string
   priceCents: number
+  applicationFeeCents: number
+  title: string
 }): Promise<string> {
   const plan = await whopFetch<{ id: string }>("/api/v2/plans", {
     method: "POST",
     body: JSON.stringify({
-      product_id: getWhopProductId(),
+      company_id: input.companyId,
+      product_id: input.productId,
       plan_type: "one_time",
       base_currency: "usd",
       initial_price: input.priceCents / 100,
-      internal_notes: `Singularity asset ${input.assetId}: ${input.title}`,
+      application_fee_amount: input.applicationFeeCents / 100,
+      title: input.title.slice(0, 30), // Whop caps plan titles at 30 chars
     }),
   })
 
-  if (!plan?.id) {
-    throw new Error("Whop plan creation returned no id")
-  }
-
+  if (!plan?.id) throw new Error("Whop plan creation returned no id")
   return plan.id
 }
 

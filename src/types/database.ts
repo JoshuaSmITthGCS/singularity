@@ -27,6 +27,8 @@ export type Profile = {
   display_name: string | null
   avatar_url: string | null
   total_earnings_cents: number
+  whop_company_id: string | null
+  whop_kyc_complete: boolean
   created_at: string
   updated_at: string
 }
@@ -58,6 +60,7 @@ export type Asset = {
   price_cents: number
   status: AssetStatus
   whop_plan_id: string | null
+  whop_product_id: string | null
   view_count: number
   procurement_count: number
   created_at: string
@@ -162,8 +165,8 @@ export type Database = {
       repos: Table<Repo, Omit<Repo, "id" | "connected_at"> & { id?: string; connected_at?: string }>
       assets: Table<
         Asset,
-        Omit<Asset, "id" | "created_at" | "updated_at" | "view_count" | "procurement_count" | "whop_plan_id"> &
-          Partial<Pick<Asset, "id" | "created_at" | "updated_at" | "view_count" | "procurement_count" | "whop_plan_id">>
+        Omit<Asset, "id" | "created_at" | "updated_at" | "view_count" | "procurement_count" | "whop_plan_id" | "whop_product_id"> &
+          Partial<Pick<Asset, "id" | "created_at" | "updated_at" | "view_count" | "procurement_count" | "whop_plan_id" | "whop_product_id">>
       >
       asset_variants: Table<
         AssetVariant,

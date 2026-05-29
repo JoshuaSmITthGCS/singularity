@@ -6,10 +6,10 @@ type AdminClient = ReturnType<typeof createAdminClient>
 
 // Run delivery for a paid procurement and record the developer ledger entry.
 //
-// Whop collects the buyer's payment into the platform account, so the payment
-// row is recorded as `pending` — it represents what the developer is owed and
-// is settled out-of-band via a payout. total_earnings_cents tracks lifetime
-// amount owed/earned.
+// Under the connected-accounts model Whop has already routed the developer's
+// share to their connected balance (the platform took its application fee), so
+// the payment row is recorded as `paid`. The developer withdraws via Whop's
+// hosted payout portal. total_earnings_cents tracks lifetime earnings.
 export async function fulfillProcurement({
   admin,
   procurement,
@@ -63,8 +63,8 @@ export async function fulfillProcurement({
         procurement_id: procurement.id,
         developer_id: asset.developer_id,
         amount_cents: procurement.developer_share_cents,
-        status: "pending",
-        paid_at: null,
+        status: "paid",
+        paid_at: new Date().toISOString(),
       }),
       admin
         .from("profiles")

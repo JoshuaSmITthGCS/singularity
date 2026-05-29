@@ -6,7 +6,11 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { createProcurementSchema } from "@/lib/validation"
 import { installationHasRepo } from "@/lib/github/octokit"
-import { createCheckoutSession, createPlanForAsset } from "@/lib/whop/client"
+import {
+  createCheckoutSession,
+  createPlanOnConnectedCompany,
+  createProductOnConnectedCompany,
+} from "@/lib/whop/client"
 import { getAppUrl } from "@/lib/env"
 
 export async function POST(request: Request) {
@@ -74,13 +78,24 @@ export async function POST(request: Request) {
   if (variant.status !== "passed") return errorResponse("Choose a verified target", 400)
   if (asset.developer_id === user.id) return errorResponse("Use another account to buy your own asset", 400)
 
-  const { data: profile, error: profileError } = await admin
-    .from("profiles")
-    .select("github_installation_id")
-    .eq("id", user.id)
-    .single()
+  const [{ data: profile, error: profileError }, { data: developer, error: developerError }] =
+    await Promise.all([
+      admin.from("profiles").select("github_installation_id").eq("id", user.id).single(),
+      admin
+        .from("profiles")
+        .select("whop_company_id, whop_kyc_complete")
+        .eq("id", asset.developer_id)
+        .single(),
+    ])
 
   if (profileError) return errorResponse("Profile is not ready", 400)
+  if (developerError || !developer) return errorResponse("Developer profile is not ready", 400)
+
+  // The developer must have a connected Whop account so payment can be split to
+  // their balance. They onboard via /api/whop/connect before publishing.
+  if (!developer.whop_company_id || !developer.whop_kyc_complete) {
+    return errorResponse("This developer has not finished payment onboarding yet", 409)
+  }
 
   if (input.delivery_method === "github_pr") {
     if (!input.target_repo_full_name) return errorResponse("Choose a target repo", 400)
@@ -91,6 +106,9 @@ export async function POST(request: Request) {
   }
 
   const { developerShareCents, platformFeeCents, referralReserveCents } = calculateShares(asset.price_cents)
+  // Whop routes the developer share to their connected balance automatically;
+  // the platform takes its cut (fee + referral reserve) as the application fee.
+  const applicationFeeCents = platformFeeCents + referralReserveCents
 
   // Create the procurement up front in awaiting_payment. Delivery happens only
   // after Whop confirms payment via the webhook (see /api/webhooks/whop).
@@ -117,16 +135,31 @@ export async function POST(request: Request) {
   if (procurementError) return errorResponse(procurementError.message, 400)
 
   try {
-    // Each asset maps to a Whop plan priced to its asset price. Create lazily on
-    // first purchase and cache the plan id on the asset.
+    // Each asset maps to a product + plan on the developer's connected company,
+    // created lazily on first purchase and cached on the asset. The plan carries
+    // the platform's application fee, so Whop splits every payment automatically.
     let planId = asset.whop_plan_id
     if (!planId) {
-      planId = await createPlanForAsset({
-        assetId: asset.id,
-        title: asset.title,
+      const productId =
+        asset.whop_product_id ??
+        (await createProductOnConnectedCompany({
+          companyId: developer.whop_company_id,
+          title: asset.title,
+          description: asset.short_description,
+        }))
+
+      planId = await createPlanOnConnectedCompany({
+        companyId: developer.whop_company_id,
+        productId,
         priceCents: asset.price_cents,
+        applicationFeeCents,
+        title: asset.title,
       })
-      await admin.from("assets").update({ whop_plan_id: planId }).eq("id", asset.id)
+
+      await admin
+        .from("assets")
+        .update({ whop_product_id: productId, whop_plan_id: planId })
+        .eq("id", asset.id)
     }
 
     const { checkoutId, checkoutUrl } = await createCheckoutSession({
