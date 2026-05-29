@@ -1,0 +1,1 @@
+-- Seed data is intentionally empty. Create users through Supabase Auth so RLS and profile triggers are exercised.

@@ -1,0 +1,31 @@
+[build]
+  command = "pnpm build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--version"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Environment variables (configure in Netlify UI)
+# NEXT_PUBLIC_SUPABASE_URL - Your hosted Supabase URL
+# NEXT_PUBLIC_SUPABASE_ANON_KEY - Supabase anon key
+# SUPABASE_SERVICE_ROLE_KEY - Supabase service role key
+# OPENAI_API_KEY - OpenAI API key used by the worker
+# OPENAI_MODEL - Optional OpenAI model override
+# GITHUB_APP_ID - GitHub App ID
+# GITHUB_APP_SLUG - GitHub App slug
+# GITHUB_APP_CLIENT_ID - GitHub App Client ID
+# GITHUB_APP_CLIENT_SECRET - GitHub App Client Secret
+# GITHUB_APP_PRIVATE_KEY - GitHub App Private Key (with \n)
+# GITHUB_APP_WEBHOOK_SECRET - GitHub App Webhook Secret
+# NEXT_PUBLIC_APP_URL - Your Netlify production URL
+# NEXT_PUBLIC_REAL_BACKEND - Set to true to disable demo mode in the browser
+# SINGULARITY_REAL_BACKEND - Set to true to disable demo mode on the server
+# STRIPE_SECRET_KEY - Stripe secret key (Phase 5)
+# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY - Stripe publishable key (Phase 5)

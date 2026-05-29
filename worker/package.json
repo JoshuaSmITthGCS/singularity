@@ -1,0 +1,23 @@
+{
+  "name": "@singularity/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build:images": "docker build -t singularity-node-runner -f docker/node.Dockerfile docker && docker build -t singularity-typescript-runner -f docker/typescript.Dockerfile docker && docker build -t singularity-java-runner -f docker/java.Dockerfile docker && docker build -t singularity-csharp-runner -f docker/csharp.Dockerfile docker && docker build -t singularity-cpp-runner -f docker/cpp.Dockerfile docker"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.87.0",
+    "dockerode": "^4.0.9",
+    "dotenv": "^17.2.3",
+    "openai": "^6.39.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/dockerode": "^3.3.47",
+    "@types/node": "^20",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

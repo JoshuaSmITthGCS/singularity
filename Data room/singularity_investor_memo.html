@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Singularity — Investor Memo</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #F2C335;
+    --gold-dark: #C99A10;
+    --black: #1A1A18;
+    --near-black: #2C2C2A;
+    --gray-mid: #888780;
+    --gray-light: #F1EFE8;
+    --white: #FFFFFF;
+    --rule: #D3D1C7;
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+    --green: #3B6D11;
+    --green-light: #EAF3DE;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #EDECEA;
+    color: var(--near-black);
+    font-size: 13px;
+    line-height: 1.6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page {
+    width: 8.5in;
+    min-height: 11in;
+    background: var(--white);
+    margin: 0 auto 40px;
+    position: relative;
+  }
+
+  /* ── PAGE 1 HEADER ── */
+  .page-1 .header {
+    background: var(--black);
+    padding: 22px 56px 17px;
+    position: relative;
+  }
+  .page-1 .header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 180px; height: 180px;
+    background: var(--gold);
+    border-radius: 50%;
+    transform: translate(40%, 50%);
+    opacity: 0.2;
+  }
+  .page-1 .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .logo-lockup { display: flex; align-items: center; gap: 10px; }
+  .logo-word {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--white);
+    letter-spacing: -0.5px;
+  }
+  .logo-dot {
+    width: 9px; height: 9px;
+    background: var(--gold);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .memo-tag {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    padding: 4px 10px;
+    border-radius: 2px;
+  }
+  .header-tagline {
+    font-family: 'Syne', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1.2;
+    max-width: 480px;
+  }
+  .header-tagline span { color: var(--gold); }
+  .header-sub {
+    margin-top: 10px;
+    color: #c4c4c4;
+    font-size: 12.5px;
+    font-weight: 300;
+    max-width: 420px;
+  }
+  .meta-row {
+    display: flex;
+    gap: 28px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .meta-item label {
+    display: block;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: bold;
+    color: #c4c4c4;
+    margin-bottom: 2px;
+  }
+  .meta-item span { font-size: 11px; font-weight: 500; color: var(--white); }
+
+  /* ── BODY ── */
+  .body { padding: 20px 56px 20px; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 18px; }
+  .section-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold-dark);
+    margin-bottom: 7px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--black);
+    margin-bottom: 5px;
+    line-height: 1.25;
+  }
+  p { color: #36454f; font-size: 11px; line-height: 1.6; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px; }
+  .stat-card {
+    background: var(--gray-light);
+    border-radius: 6px;
+    padding: 11px;
+    text-align: center;
+  }
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--black);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label { font-size: 10.5px; color: var(--near-black); font-weight: 300; }
+
+  /* ── TWO-LANE PIPELINE ── */
+  .pipeline-wrapper {
+    margin-bottom: 18px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .lane-dev {
+    background: var(--black);
+    padding: 12px 16px 14px;
+  }
+  .lane-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .lane-tag {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+  .tag-dev { background: var(--green-light); color: var(--green); }
+  .tag-client { background: var(--blue-light); color: var(--blue); }
+
+  .lane-desc-dev {
+    font-size: 10px;
+    color: #c4c4c4;
+    font-style: italic;
+    font-weight: bold;
+  }
+  .lane-desc-client {
+    font-size: 10px;
+    color: #36454f;
+    font-style: italic;
+    font-weight: bold;
+  }
+
+  .dev-step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .pipe-num {
+    width: 18px; height: 18px;
+    background: var(--gold);
+    color: var(--black);
+    border-radius: 50%;
+    font-family: 'Syne', sans-serif;
+    font-size: 9px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .pipe-num.blue-num { background: var(--blue); color: var(--white); }
+
+  .pipe-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+  .lane-dev .pipe-title { color: var(--white); }
+  .lane-client .pipe-title { color: var(--black); }
+  .pipe-sub { font-size: 10px; line-height: 1.5; }
+  .lane-dev .pipe-sub { color: #c4c4c4; }
+  .lane-client .pipe-sub { color: #36454f; }
+
+  .platform-bar {
+    background: var(--gold);
+    padding: 6px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .platform-bar-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 8.5px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    color: rgba(0,0,0,0.55);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .platform-bar-rule { flex: 1; height: 1px; background: rgba(0,0,0,0.18); }
+  .platform-bar-note { font-size: 9px; color: rgba(0,0,0,0.45); white-space: nowrap; }
+
+  .lane-client {
+    background: var(--gray-light);
+    padding: 12px 16px 14px;
+  }
+  .client-steps {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    gap: 8px;
+  }
+  .client-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 2px;
+    font-size: 14px;
+    color: var(--gray-mid);
+    align-self: center;
+  }
+
+  /* ── MARKET BARS ── */
+  .market-bar { margin-bottom: 0; }
+  .market-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .market-row-label { width: 130px; font-size: 10.5px; color: var(--gray-mid); flex-shrink: 0; text-align: right; }
+  .market-track { flex: 1; background: #E8E6DF; border-radius: 3px; height: 17px; overflow: hidden; }
+  .market-fill { height: 100%; border-radius: 3px; display: flex; align-items: center; padding-left: 10px; font-size: 9.5px; font-weight: 600; color: var(--black); }
+  .market-val { width: 80px; font-size: 11.5px; font-weight: 600; color: var(--near-black); }
+
+  /* ── PAGE 2 ── */
+  .page-2-header {
+    background: var(--gray-light);
+    padding: 12px 56px;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .page-2-header .logo-word { color: var(--black); font-size: 18px; }
+  .page-2-hed {
+    font-family: 'Syne', sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--gray-mid);
+  }
+  .p2-body { padding: 12px 56px 10px; }
+
+  /* ── UE CHART ── */
+  .ue-chart-wrap {
+    position: relative;
+    height: 170px;
+  }
+  .ue-note { font-size: 10px; color: #a9a9a9; margin-top: 6px; font-style: italic; }
+
+  /* ── TRACTION ── */
+  .traction-row { display: flex; gap: 8px; margin-bottom: 11px; }
+  .traction-pill {
+    flex: 1;
+    background: var(--black);
+    color: var(--white);
+    border-radius: 6px;
+    padding: 8px 11px;
+  }
+  .traction-pill .org { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--gold); margin-bottom: 3px; }
+  .traction-pill .desc { font-size: 10.5px; color: #c4c4c4; line-height: 1.4; }
+
+  /* ── ROADMAP ── */
+  .roadmap { display: flex; gap: 0; margin-bottom: 11px; border-radius: 8px; overflow: hidden; border: 1px solid var(--rule); }
+  .rm-phase { flex: 1; padding: 8px 11px; }
+  .rm-phase:not(:last-child) { border-right: 1px solid var(--rule); }
+  .rm-phase.active { background: var(--black); }
+  .rm-date { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+  .rm-phase:not(.active) .rm-date { color: var(--gold-dark); }
+  .rm-phase.active .rm-date { color: var(--gold); }
+  .rm-phase-title { font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700; margin-bottom: 2px; }
+  .rm-phase:not(.active) .rm-phase-title { color: var(--black); }
+  .rm-phase.active .rm-phase-title { color: var(--white); }
+  .rm-desc { font-size: 10px; line-height: 1.5; }
+  .rm-phase:not(.active) .rm-desc { color: var(--gray-mid); font-weight: bold;}
+  .rm-phase.active .rm-desc { color: #c4c4c4; }
+
+  /* ── TEAM ── */
+  .team-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 11px; }
+  .team-card { background: var(--gray-light); border-radius: 8px; padding: 9px 11px; }
+  .team-role { font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold-dark); margin-bottom: 5px; }
+  .team-name { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--black); margin-bottom: 2px; }
+  .team-bg { font-size: 10px; color: var(--near-black); }
+
+  /* ── ASK ── */
+  .ask-box {
+    background: var(--black);
+    border-radius: 8px;
+    padding: 11px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 11px;
+  }
+  .ask-amount { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; color: var(--gold); line-height: 1; flex-shrink: 0; }
+  .ask-label { font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray-mid); margin-bottom: 5px; }
+  .ask-breakdown { display: flex; flex-direction: column; gap: 4px; }
+  .ask-item { font-size: 9.5px; color: #A8A69F; display: flex; align-items: flex-start; gap: 8px; }
+  .ask-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+  .dot-gold { background: var(--gold); }
+  .dot-gray { background: #5F5E5A; }
+  .dot-light { background: #888780; }
+
+  /* ── FOOTER ── */
+  .footer {
+    padding: 11px 56px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--rule);
+  }
+  .footer-contact { font-size: 11px; color: var(--gray-mid); }
+  .footer-contact strong { color: var(--near-black); }
+  .footer-pg { font-size: 10px; color: var(--rule); font-weight: 500; }
+
+  @media print {
+    body { background: white; }
+
+    .page {
+      margin-bottom: 0;
+      box-shadow: none;
+      overflow: visible;
+      min-height: 0 !important;
+      max-height: 11.5in;
+      width: 8.5in;
+      justify-content: center;
+      vertical-align: middle;
+    }
+
+    /* Force a real PDF page break before page 2 */
+    .page-2 {
+      page-break-before: always;
+      break-before: page;
+      justify-content: center;
+      vertical-align: middle;
+    }
+
+    /* Never split any of these mid-page */
+    .header,
+    .page-2-header,
+    .two-col,
+    .stat-grid,
+    .stat-card,
+    .section-label,
+    .pipeline-wrapper,
+    .lane-dev,
+    .platform-bar,
+    .lane-client,
+    .client-steps,
+    .dev-step,
+    .market-bar,
+    .market-row,
+    .ue-chart-wrap,
+    .ue-note,
+    .traction-row,
+    .traction-pill,
+    .roadmap,
+    .rm-phase,
+    .team-grid,
+    .team-card,
+    .ask-box,
+    .footer {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    /* Keep section label attached to the content that follows it */
+    .section-label {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+
+    /* Keep headings attached to first paragraph */
+    h2 {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════ PAGE 1 ══════════════════════════════════════ -->
+<div class="page page-1">
+
+  <div class="header">
+    <div class="header-top">
+      <div class="logo-lockup">
+        <span class="logo-word">SINGULARITY MKPL</span>
+        <div class="logo-dot"></div>
+      </div>
+      <span class="memo-tag">Investor Memo · 2026</span>
+    </div>
+    <div class="header-tagline">The AI-powered code marketplace for <span>game developers</span>.</div>
+    <div class="header-sub">Developers publish once. Clients search, adapt, and deploy in any language. Creators earn every time their code ships.</div>
+    <div class="meta-row">
+      <div class="meta-item"><label>Stage</label><span>Pre-Seed / Prototype</span></div>
+      <div class="meta-item"><label>Raise</label><span>$1.5M Pre-Seed</span></div>
+      <div class="meta-item"><label>Beachhead</label><span>Indie Scripting — $1.31B</span></div>
+      <div class="meta-item"><label>TAM</label><span>General Software — $522B</span></div>
+      <div class="meta-item"><label>Contact</label><span>blkhrzn22@gmail.com</span></div>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <!-- Problem -->
+    <div class="section-label">The Problem</div>
+    <div class="two-col">
+      <div>
+        <h2>Game development is broken by redundancy.</h2>
+        <p>AAA studios spend an average of <strong>6 years</strong> and <strong>$200M+</strong> per title. 60% of that time is consumed rebuilding code that already exists elsewhere — in a different language, for a different engine, with no way to access or adapt it.</p>
+      </div>
+      <div>
+        <h2>Infrastructure, not talent, is the bottleneck.</h2>
+        <p>Thousands of capable developers work in isolated silos. There is no trusted, verifiable, cross-language marketplace for code assets. GitHub is a repository, not a marketplace. Nothing intelligently adapts logic across environments.</p>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-num">60%</div><div class="stat-label">Dev time rebuilding existing code</div></div>
+      <div class="stat-card"><div class="stat-num">$200M+</div><div class="stat-label">Average AAA production cost</div></div>
+      <div class="stat-card"><div class="stat-num">6 yrs</div><div class="stat-label">Average AAA development cycle</div></div>
+    </div>
+
+    <!-- Two-lane Pipeline -->
+    <div class="section-label">How It Works — Developer Side &amp; Client Side</div>
+
+    <div class="pipeline-wrapper">
+
+      <!-- DEVELOPER SIDE -->
+      <div class="lane-dev">
+        <div class="lane-header">
+          <span class="lane-tag tag-dev">Developer Side</span>
+          <span class="lane-desc-dev">One-time onboarding — assets earn passively from every future use</span>
+        </div>
+        <div class="dev-step">
+          <div class="pipe-num">1</div>
+          <div>
+            <div class="pipe-title">Publish</div>
+            <div class="pipe-sub">Developer connects their GitHub repository to Singularity. Automated static &amp; dynamic analysis verifies security, viability, stability, and functionality. Cleared assets are permanently tagged with the developer's Blockchain UID and indexed in the global marketplace by genre, original language, actions, and purpose.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Platform divider -->
+      <div class="platform-bar">
+        <div class="platform-bar-label">Singularity Platform</div>
+        <div class="platform-bar-rule"></div>
+        <div class="platform-bar-note">AI-powered matching · Blockchain asset tracking · Smart Contract settlement</div>
+        <div class="platform-bar-rule"></div>
+      </div>
+
+      <!-- CLIENT SIDE -->
+      <div class="lane-client">
+        <div class="lane-header">
+          <span class="lane-tag tag-client">Client Side</span>
+          <span class="lane-desc-client">From idea to production-ready code in four steps</span>
+        </div>
+        <div class="client-steps">
+          <div class="dev-step">
+            <div class="pipe-num blue-num">2</div>
+            <div>
+              <div class="pipe-title">Search &amp; Select</div>
+              <div class="pipe-sub">Client describes their need; AI finds the 5–10 closest matches by genre, action, or language. Client selects their preferred asset.</div>
+            </div>
+          </div>
+          <div class="dev-step">
+            <div class="pipe-num blue-num">3</div>
+            <div>
+              <div class="pipe-title">Procure</div>
+              <div class="pipe-sub">Smart Contract fires on selection — payment routes instantly to the original developer via Blockchain UID.</div>
+            </div>
+          </div>
+          <div class="dev-step">
+            <div class="pipe-num blue-num">4</div>
+            <div>
+              <div class="pipe-title">Translate</div>
+              <div class="pipe-sub">LLM engine converts code to the client's language and engine. Logic preserved. Re-verified post-translation.</div>
+            </div>
+          </div>
+          <div class="dev-step">
+            <div class="pipe-num blue-num">5</div>
+            <div>
+              <div class="pipe-title">Ship</div>
+              <div class="pipe-sub">Adapted code pushed to the client's GitHub repo — function names adjusted, units converted, production-ready.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Market -->
+    <div class="section-label">Market Opportunity</div>
+    <div class="market-bar">
+      <div class="market-row">
+        <div class="market-row-label">SOM — Indie Scripting</div>
+        <div class="market-track"><div class="market-fill" style="width:15%; background: var(--gold);">$1.31B</div></div>
+        <div class="market-val">Entry Point</div>
+      </div>
+      <div class="market-row">
+        <div class="market-row-label">SAM — Game Dev</div>
+        <div class="market-track"><div class="market-fill" style="width:48%; background: #C4C2BA;">$141.5B</div></div>
+        <div class="market-val">Scale Target</div>
+      </div>
+      <div class="market-row">
+        <div class="market-row-label">TAM — All Software</div>
+        <div class="market-track"><div class="market-fill" style="width:100%; background: var(--black); color:#F1EFE8;">$522B</div></div>
+        <div class="market-val">Long-Term</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ PAGE 2 ══════════════════════════════════════ -->
+<div class="page page-2">
+
+  <div class="page-2-header">
+    <div class="logo-lockup">
+      <span class="logo-word">SINGULARITY</span>
+      <div class="logo-dot" style="background:var(--gold-dark);"></div>
+    </div>
+    <div class="page-2-hed">Business Model, Traction &amp; The Ask — Page 2 of 2</div>
+  </div>
+
+  <div class="p2-body">
+
+    <!-- Unit Economics Chart + Revenue Model -->
+    <div class="two-col" style="margin-bottom:12px; align-items:start;">
+      <div>
+        <div class="section-label">Unit Economics</div>
+        <!-- Pre-computed SVG — no JS/CDN required -->
+        <!-- Formula: ppl(n)=max(0.000002, 0.0000343-0.000002643*ln(n)), CAP=$25K -->
+        <!-- viewBox: plot area x[56,368] y[20,152], W=312 H=132 -->
+        <svg viewBox="0 0 424 168" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:160px;display:block;">
+
+          <!-- Subtle grid lines (left axis: $5K intervals) -->
+          <line x1="56" y1="128" x2="368" y2="128" stroke="#E8E6DF" stroke-width="0.5"/><!-- $5K -->
+          <line x1="56" y1="105" x2="368" y2="105" stroke="#E8E6DF" stroke-width="0.5"/><!-- $10K -->
+          <line x1="56" y1="81"  x2="368" y2="81"  stroke="#E8E6DF" stroke-width="0.5"/><!-- $15K -->
+          <line x1="56" y1="58"  x2="368" y2="58"  stroke="#E8E6DF" stroke-width="0.5"/><!-- $20K -->
+
+          <!-- Return area fill (gold, translucent) -->
+          <polygon
+            points="56,144 95,136 134,124 173,105 212,63 251,34 290,34 329,34 368,34 368,152 56,152"
+            fill="#F2C335" fill-opacity="0.13"/>
+
+          <!-- Floor reference line (amber dashed, right axis) -->
+          <line x1="56" y1="137" x2="368" y2="137" stroke="#C99A10" stroke-width="1" stroke-dasharray="4,3"/>
+
+          <!-- Cap reference line (coral dashed, left axis) -->
+          <line x1="56" y1="34" x2="368" y2="34" stroke="#D85A30" stroke-width="1" stroke-dasharray="4,3"/>
+
+          <!-- Price/line curve (blue, descending) -->
+          <polyline
+            points="56,27 95,46 134,60 173,75 212,94 251,108 290,130 329,137 368,137"
+            fill="none" stroke="#185FA5" stroke-width="1.5" stroke-linejoin="round"/>
+
+          <!-- Creator return curve (gold, ascending then flat) -->
+          <polyline
+            points="56,144 95,136 134,124 173,105 212,63 251,34 290,34 329,34 368,34"
+            fill="none" stroke="#F2C335" stroke-width="2.2" stroke-linejoin="round"/>
+
+          <!-- Return curve data points -->
+          <circle cx="56"  cy="144" r="2.5" fill="#F2C335"/>
+          <circle cx="95"  cy="136" r="2.5" fill="#F2C335"/>
+          <circle cx="134" cy="124" r="2.5" fill="#F2C335"/>
+          <circle cx="173" cy="105" r="2.5" fill="#F2C335"/>
+          <circle cx="212" cy="63"  r="2.5" fill="#F2C335"/>
+          <circle cx="251" cy="34"  r="3"   fill="#F2C335" stroke="#fff" stroke-width="1"/>
+
+          <!-- Price curve data points -->
+          <circle cx="56"  cy="27"  r="2" fill="#185FA5"/>
+          <circle cx="95"  cy="46"  r="2" fill="#185FA5"/>
+          <circle cx="134" cy="60"  r="2" fill="#185FA5"/>
+          <circle cx="173" cy="75"  r="2" fill="#185FA5"/>
+          <circle cx="212" cy="94"  r="2" fill="#185FA5"/>
+          <circle cx="251" cy="108" r="2" fill="#185FA5"/>
+          <circle cx="290" cy="130" r="2" fill="#185FA5"/>
+
+          <!-- Axes -->
+          <line x1="56"  y1="20" x2="56"  y2="152" stroke="#D3D1C7" stroke-width="0.8"/>
+          <line x1="56"  y1="152" x2="368" y2="152" stroke="#D3D1C7" stroke-width="0.8"/>
+          <line x1="368" y1="20" x2="368" y2="152" stroke="#D3D1C7" stroke-width="0.8"/>
+
+          <!-- Left Y-axis labels (creator return) -->
+          <text x="51" y="156" text-anchor="end" font-size="8" fill="#C99A10" font-family="sans-serif">$0</text>
+          <text x="51" y="132" text-anchor="end" font-size="8" fill="#C99A10" font-family="sans-serif">$5K</text>
+          <text x="51" y="109" text-anchor="end" font-size="8" fill="#C99A10" font-family="sans-serif">$10K</text>
+          <text x="51" y="85"  text-anchor="end" font-size="8" fill="#C99A10" font-family="sans-serif">$15K</text>
+          <text x="51" y="62"  text-anchor="end" font-size="8" fill="#C99A10" font-family="sans-serif">$20K</text>
+          <text x="51" y="38"  text-anchor="end" font-size="7.5" fill="#D85A30" font-family="sans-serif">$25K cap</text>
+
+          <!-- Right Y-axis labels (price per line) -->
+          <text x="373" y="156" text-anchor="start" font-size="8" fill="#185FA5" font-family="sans-serif">$0</text>
+          <text x="373" y="109" text-anchor="start" font-size="8" fill="#185FA5" font-family="sans-serif">.000006</text>
+          <text x="373" y="62"  text-anchor="start" font-size="8" fill="#185FA5" font-family="sans-serif">.000012</text>
+          <text x="373" y="31"  text-anchor="start" font-size="8" fill="#185FA5" font-family="sans-serif">.000017</text>
+          <text x="373" y="141" text-anchor="start" font-size="7.5" fill="#C99A10" font-family="sans-serif">floor</text>
+
+          <!-- X-axis labels -->
+          <text x="56"  y="163" text-anchor="middle" font-size="7.5" fill="#888780" font-family="sans-serif">1K</text>
+          <text x="95"  y="163" text-anchor="middle" font-size="7.5" fill="#888780" font-family="sans-serif">2.5K</text>
+          <text x="134" y="163" text-anchor="middle" font-size="7.5" fill="#888780" font-family="sans-serif">5K</text>
+          <text x="173" y="163" text-anchor="middle" font-size="7.5" fill="#888780" font-family="sans-serif">10K</text>
+          <text x="212" y="163" text-anchor="middle" font-size="7.5" fill="#888780" font-family="sans-serif">25K</text>
+          <text x="251" y="163" text-anchor="middle" font-size="7.5" fill="#888780" font-family="sans-serif">50K</text>
+          <text x="290" y="163" text-anchor="middle" font-size="7.5" fill="#888780" font-family="sans-serif">100K</text>
+          <text x="329" y="163" text-anchor="middle" font-size="7.5" fill="#888780" font-family="sans-serif">250K</text>
+          <text x="368" y="163" text-anchor="middle" font-size="7.5" fill="#888780" font-family="sans-serif">500K</text>
+
+          <!-- X-axis title -->
+          <text x="212" y="168" text-anchor="middle" font-size="7.5" fill="#888780" font-family="sans-serif">Lines of Code Submitted</text>
+
+          <!-- Legend -->
+          <rect x="56" y="22" width="8" height="8" fill="#F2C335" fill-opacity="0.3" stroke="#F2C335" stroke-width="1"/>
+          <text x="68" y="29" font-size="7.5" fill="#555553" font-family="sans-serif">Creator return (capped $25K)</text>
+          <line x1="185" y1="26" x2="200" y2="26" stroke="#185FA5" stroke-width="1.5"/>
+          <text x="203" y="29" font-size="7.5" fill="#555553" font-family="sans-serif">Price / line (log curve)</text>
+          <line x1="294" y1="26" x2="309" y2="26" stroke="#D85A30" stroke-width="1" stroke-dasharray="3,2"/>
+          <line x1="294" y1="30" x2="309" y2="30" stroke="#C99A10" stroke-width="1" stroke-dasharray="3,2"/>
+          <text x="312" y="32" font-size="7.5" fill="#555553" font-family="sans-serif">Cap / Floor</text>
+        </svg>
+        <div class="ue-note">* Baseline return at quality score 1.0, capped at $25,000. Assumes 100 games × 1,000 copies per game. Final payout adjusted by quality multiplier (0.5×–1.25×) — security, test coverage, documentation, runtime stability. Platform fee not deducted.</div>
+      </div>
+
+      <div>
+        <div class="section-label">Revenue Model</div>
+        <h2>Inverse-log pricing with a quality multiplier, floor, and ceiling.</h2>
+        <p style="margin-bottom: 7px;">Smart Contract fee model on every deployment — platform retains a cut; the remainder routes to the developer via Blockchain UID.</p>
+        <p style="margin-bottom: 7px;">Price/line follows an inverse-log curve: <strong>~$0.000016</strong> for small submissions, decaying to a <strong>$0.000002 floor</strong> at scale. Returns cap at <strong>$25K per asset per cycle</strong> (~40K lines). Final payouts scale by a <strong>quality multiplier (0.5×–1.25×)</strong> — security, test coverage, documentation, and runtime stability.</p>
+        <p>Future revenue: enterprise SLA subscriptions, priority verification queuing, CI/CD API access for studios.</p>
+      </div>
+    </div>
+
+    <!-- Traction -->
+    <div class="section-label">Current Traction</div>
+    <div class="traction-row">
+      <div class="traction-pill">
+        <div class="org">Texas A&amp;M University</div>
+        <div class="desc">Game Development Center — academic validation &amp; early developer access.</div>
+      </div>
+      <div class="traction-pill">
+        <div class="org">NSBE PCI Esports &amp; Gaming</div>
+        <div class="desc">NSBE — developer community for supply-side onboarding.</div>
+      </div>
+      <div class="traction-pill">
+        <div class="org">Game Heads</div>
+        <div class="desc">Customer outreach — indie developer demand-side validation.</div>
+      </div>
+      <div class="traction-pill" style="background: #3B6D11;">
+        <div class="org" style="color: #C0DD97;">Future: Navy / DARPA</div>
+        <div class="desc" style="color: #EAF3DE;">CRADA with Naval Surface Warfare Center Carderock — C-to-Rust translation automation.</div>
+      </div>
+    </div>
+
+    <!-- Roadmap -->
+    <div class="section-label">Roadmap</div>
+    <div class="roadmap">
+      <div class="rm-phase active">
+        <div class="rm-date">Now — Spring 2026</div>
+        <div class="rm-phase-title">Prototype</div>
+        <div class="rm-desc">Core engine in development. Early design testers. GitHub integration and static/dynamic analysis pipeline.</div>
+      </div>
+      <div class="rm-phase">
+        <div class="rm-date">Fall 2026</div>
+        <div class="rm-phase-title">Beta Launch</div>
+        <div class="rm-desc">Pilot developer teams. Closed marketplace. LLM translation engine live. Smart Contract royalty payouts active.</div>
+      </div>
+      <div class="rm-phase">
+        <div class="rm-date">2027</div>
+        <div class="rm-phase-title">Public Release</div>
+        <div class="rm-desc">Open market. Unity/Unreal integrations. Expansion into non-gaming software development verticals.</div>
+      </div>
+    </div>
+
+    <!-- Team -->
+    <div class="section-label">The Team</div>
+    <div class="team-grid">
+      <div class="team-card"><div class="team-role">CEO</div><div class="team-name">Jeremiah Smith</div><div class="team-bg">Mechanical Engineering · North Carolina</div></div>
+      <div class="team-card"><div class="team-role">CTO</div><div class="team-name">Joshua Smith</div><div class="team-bg">Computer Science · Maryland</div></div>
+      <div class="team-card"><div class="team-role">COO</div><div class="team-name">Bafoday Dainkeh</div><div class="team-bg">Mechanical Engineering · Maryland</div></div>
+      <div class="team-card"><div class="team-role">Engineer</div><div class="team-name">Cameron Salisbury</div><div class="team-bg">Information Technology · Washington State</div></div>
+      <div class="team-card"><div class="team-role">Project Manager</div><div class="team-name">Keith Gabbidon</div><div class="team-bg">Mechanical Engineering · Texas</div></div>
+      <div class="team-card"><div class="team-role">Advisor</div><div class="team-name">Dr. James McCoy</div><div class="team-bg">Computer Engineering · Maryland</div></div>
+    </div>
+
+    <!-- The Ask -->
+    <div class="section-label">The Ask</div>
+    <div class="ask-box">
+      <div>
+        <div class="ask-label">Pre-Seed Raise Target</div>
+        <div class="ask-amount">$1.5M</div>
+        <div style="font-size:10px; color:#6B6B68; margin-top:6px; max-width:140px; line-height:1.5;">18–24 month runway to MVP &amp; Demo Day readiness</div>
+      </div>
+      <div style="flex:1;">
+        <div class="ask-label" style="margin-bottom:10px;">Allocation</div>
+        <div class="ask-breakdown">
+          <div class="ask-item"><div class="ask-dot dot-gold"></div>Engineering (~55%) — LLM translation pipeline, verification engine, GitHub OAuth, blockchain UID</div>
+          <div class="ask-item"><div class="ask-dot dot-gray"></div>Legal &amp; IP (~20%) — smart contract architecture, IP protection, licensing, Trade Secret Regestration</div>
+          <div class="ask-item"><div class="ask-dot dot-light"></div>Community (~25%) — developer onboarding, studio outreach, marketing</div>
+        </div>
+        <div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08); font-size:10px; color:#6B6B68; line-height:1.6;">
+          SAFE note (uncapped MFN or $8M–$12M cap) · Angels, micro-VCs, dev-tools accelerators
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <div class="footer-contact"><strong>Jeremiah Smith, CEO</strong> &nbsp;·&nbsp; blkhrzn22@gmail.com &nbsp;·&nbsp; 240-467-8508</div>
+    <div class="footer-pg">SINGULARITY · CONFIDENTIAL · 2 OF 2</div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,199 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Language = "javascript" | "typescript" | "java" | "csharp" | "cpp"
+export type AssetStatus = "draft" | "verifying" | "published" | "archived" | "flagged"
+export type VariantStatus = "queued" | "translating" | "testing" | "passed" | "failed"
+export type DeliveryMethod = "github_pr" | "download"
+export type ProcurementStatus = "pending" | "delivering" | "delivered" | "failed"
+export type Confidence = "high" | "medium" | "low"
+
+export type Profile = {
+  id: string
+  github_username: string | null
+  github_user_id: number | null
+  github_installation_id: number | null
+  display_name: string | null
+  avatar_url: string | null
+  total_earnings_cents: number
+  created_at: string
+  updated_at: string
+}
+
+export type Repo = {
+  id: string
+  owner_id: string
+  github_repo_id: number
+  github_full_name: string
+  default_branch: string
+  connected_at: string
+}
+
+export type Asset = {
+  id: string
+  developer_id: string
+  repo_id: string | null
+  source_type: "github" | "paste"
+  source_language: Language
+  title: string
+  short_description: string
+  long_description: string | null
+  summary: string
+  tags: string[]
+  source_path: string | null
+  test_path: string | null
+  source_code: string
+  test_code: string
+  price_cents: number
+  status: AssetStatus
+  view_count: number
+  procurement_count: number
+  created_at: string
+  updated_at: string
+}
+
+export type AssetVariant = {
+  id: string
+  asset_id: string
+  target_language: Language
+  translated_code: string | null
+  translated_tests: string | null
+  adaptation_log: string | null
+  notes_for_pr: string | null
+  confidence: Confidence | null
+  tests_total: number | null
+  tests_passed: number | null
+  tests_failed: number | null
+  test_output: string | null
+  status: VariantStatus
+  worker_claimed_by: string | null
+  worker_claimed_at: string | null
+  started_at: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type Procurement = {
+  id: string
+  client_id: string
+  asset_id: string
+  variant_id: string
+  developer_id: string
+  target_language: Language
+  delivery_method: DeliveryMethod
+  target_repo_full_name: string | null
+  target_repo_branch: string | null
+  price_cents: number
+  developer_share_cents: number
+  platform_fee_cents: number
+  referral_reserve_cents: number
+  pr_url: string | null
+  pr_number: number | null
+  status: ProcurementStatus
+  failure_reason: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type Payment = {
+  id: string
+  procurement_id: string
+  developer_id: string
+  amount_cents: number
+  status: "pending" | "paid" | "failed"
+  paid_at: string | null
+  created_at: string
+}
+
+export type MarketplaceAsset = Pick<
+  Asset,
+  | "id"
+  | "developer_id"
+  | "source_language"
+  | "title"
+  | "short_description"
+  | "long_description"
+  | "summary"
+  | "tags"
+  | "price_cents"
+  | "view_count"
+  | "procurement_count"
+  | "created_at"
+>
+
+export type MarketplaceVariant = Pick<
+  AssetVariant,
+  | "id"
+  | "asset_id"
+  | "target_language"
+  | "status"
+  | "confidence"
+  | "tests_total"
+  | "tests_passed"
+  | "tests_failed"
+>
+
+type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
+  Row: Row
+  Insert: Insert
+  Update: Update
+  Relationships: []
+}
+
+export type Database = {
+  public: {
+    Tables: {
+      profiles: Table<Profile, Partial<Profile> & { id: string }>
+      repos: Table<Repo, Omit<Repo, "id" | "connected_at"> & { id?: string; connected_at?: string }>
+      assets: Table<
+        Asset,
+        Omit<Asset, "id" | "created_at" | "updated_at" | "view_count" | "procurement_count"> &
+          Partial<Pick<Asset, "id" | "created_at" | "updated_at" | "view_count" | "procurement_count">>
+      >
+      asset_variants: Table<
+        AssetVariant,
+        Pick<AssetVariant, "asset_id" | "target_language" | "status"> & Partial<AssetVariant>
+      >
+      procurements: Table<
+        Procurement,
+        Omit<Procurement, "id" | "created_at" | "updated_at" | "pr_url" | "pr_number" | "failure_reason"> &
+          Partial<Pick<Procurement, "id" | "created_at" | "updated_at" | "pr_url" | "pr_number" | "failure_reason">>
+      >
+      payments: Table<
+        Payment,
+        Omit<Payment, "id" | "created_at"> & Partial<Pick<Payment, "id" | "created_at">>
+      >
+    }
+    Views: {
+      marketplace_assets: {
+        Row: MarketplaceAsset
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      marketplace_variants: {
+        Row: MarketplaceVariant
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+    }
+    Functions: {
+      claim_next_variant: {
+        Args: {
+          p_worker_id: string
+          p_timeout_minutes?: number
+        }
+        Returns: AssetVariant[]
+      }
+    }
+    Enums: Record<string, never>
+    CompositeTypes: Record<string, never>
+  }
+}
