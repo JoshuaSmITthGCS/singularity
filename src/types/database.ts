@@ -10,7 +10,13 @@ export type Language = "javascript" | "typescript" | "java" | "csharp" | "cpp"
 export type AssetStatus = "draft" | "verifying" | "published" | "archived" | "flagged"
 export type VariantStatus = "queued" | "translating" | "testing" | "passed" | "failed"
 export type DeliveryMethod = "github_pr" | "download"
-export type ProcurementStatus = "pending" | "delivering" | "delivered" | "failed"
+export type ProcurementStatus =
+  | "pending"
+  | "awaiting_payment"
+  | "paid"
+  | "delivering"
+  | "delivered"
+  | "failed"
 export type Confidence = "high" | "medium" | "low"
 
 export type Profile = {
@@ -51,6 +57,7 @@ export type Asset = {
   test_code: string
   price_cents: number
   status: AssetStatus
+  whop_plan_id: string | null
   view_count: number
   procurement_count: number
   created_at: string
@@ -97,6 +104,8 @@ export type Procurement = {
   pr_number: number | null
   status: ProcurementStatus
   failure_reason: string | null
+  whop_checkout_id: string | null
+  whop_payment_id: string | null
   created_at: string
   updated_at: string
 }
@@ -153,8 +162,8 @@ export type Database = {
       repos: Table<Repo, Omit<Repo, "id" | "connected_at"> & { id?: string; connected_at?: string }>
       assets: Table<
         Asset,
-        Omit<Asset, "id" | "created_at" | "updated_at" | "view_count" | "procurement_count"> &
-          Partial<Pick<Asset, "id" | "created_at" | "updated_at" | "view_count" | "procurement_count">>
+        Omit<Asset, "id" | "created_at" | "updated_at" | "view_count" | "procurement_count" | "whop_plan_id"> &
+          Partial<Pick<Asset, "id" | "created_at" | "updated_at" | "view_count" | "procurement_count" | "whop_plan_id">>
       >
       asset_variants: Table<
         AssetVariant,
@@ -162,8 +171,30 @@ export type Database = {
       >
       procurements: Table<
         Procurement,
-        Omit<Procurement, "id" | "created_at" | "updated_at" | "pr_url" | "pr_number" | "failure_reason"> &
-          Partial<Pick<Procurement, "id" | "created_at" | "updated_at" | "pr_url" | "pr_number" | "failure_reason">>
+        Omit<
+          Procurement,
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "pr_url"
+          | "pr_number"
+          | "failure_reason"
+          | "whop_checkout_id"
+          | "whop_payment_id"
+        > &
+          Partial<
+            Pick<
+              Procurement,
+              | "id"
+              | "created_at"
+              | "updated_at"
+              | "pr_url"
+              | "pr_number"
+              | "failure_reason"
+              | "whop_checkout_id"
+              | "whop_payment_id"
+            >
+          >
       >
       payments: Table<
         Payment,

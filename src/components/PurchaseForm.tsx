@@ -86,13 +86,22 @@ export function PurchaseForm({
     })
 
     const payload = await response.json()
-    setLoading(false)
 
     if (!response.ok || payload.error) {
+      setLoading(false)
       setError(payload.error ?? "Procurement failed")
       return
     }
 
+    // Real backend returns a Whop checkout URL — send the buyer there to pay.
+    // After payment, Whop redirects back to the procurement page and the webhook
+    // completes delivery.
+    if (payload.data?.checkout_url) {
+      window.location.href = payload.data.checkout_url
+      return
+    }
+
+    setLoading(false)
     setResult(payload.data)
   }
 

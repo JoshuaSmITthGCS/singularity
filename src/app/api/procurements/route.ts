@@ -1,11 +1,13 @@
 import { dataResponse, errorResponse } from "@/lib/api"
-import { calculateShares, buildDownloadPayload, deliverProcurement } from "@/lib/procurements/delivery"
+import { calculateShares, buildDownloadPayload } from "@/lib/procurements/delivery"
 import { demoAssets, demoProcurements, getDemoAsset, getDemoVariant } from "@/lib/demo-data"
 import { isDemoMode } from "@/lib/demo-mode"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { createProcurementSchema } from "@/lib/validation"
 import { installationHasRepo } from "@/lib/github/octokit"
+import { createCheckoutSession, createPlanForAsset } from "@/lib/whop/client"
+import { getAppUrl } from "@/lib/env"
 
 export async function POST(request: Request) {
   if (isDemoMode()) {
@@ -89,6 +91,9 @@ export async function POST(request: Request) {
   }
 
   const { developerShareCents, platformFeeCents, referralReserveCents } = calculateShares(asset.price_cents)
+
+  // Create the procurement up front in awaiting_payment. Delivery happens only
+  // after Whop confirms payment via the webhook (see /api/webhooks/whop).
   const { data: procurement, error: procurementError } = await admin
     .from("procurements")
     .insert({
@@ -104,73 +109,40 @@ export async function POST(request: Request) {
       developer_share_cents: developerShareCents,
       platform_fee_cents: platformFeeCents,
       referral_reserve_cents: referralReserveCents,
-      status: "pending",
+      status: "awaiting_payment",
     })
     .select("*")
     .single()
 
   if (procurementError) return errorResponse(procurementError.message, 400)
 
-  await admin.from("procurements").update({ status: "delivering" }).eq("id", procurement.id)
-
   try {
-    const delivery = await deliverProcurement({
-      procurementId: procurement.id,
-      clientInstallationId: profile.github_installation_id,
-      asset,
-      variant,
-      deliveryMethod: input.delivery_method,
-      targetRepoFullName: input.target_repo_full_name || null,
-      targetRepoBranch: input.target_repo_branch || "main",
-    })
-
-    const { data: delivered, error: deliveredError } = await admin
-      .from("procurements")
-      .update({
-        status: "delivered",
-        pr_url: delivery.prUrl,
-        pr_number: delivery.prNumber,
+    // Each asset maps to a Whop plan priced to its asset price. Create lazily on
+    // first purchase and cache the plan id on the asset.
+    let planId = asset.whop_plan_id
+    if (!planId) {
+      planId = await createPlanForAsset({
+        assetId: asset.id,
+        title: asset.title,
+        priceCents: asset.price_cents,
       })
-      .eq("id", procurement.id)
-      .select("*")
-      .single()
+      await admin.from("assets").update({ whop_plan_id: planId }).eq("id", asset.id)
+    }
 
-    if (deliveredError) throw deliveredError
-
-    const { data: developerProfile } = await admin
-      .from("profiles")
-      .select("total_earnings_cents")
-      .eq("id", asset.developer_id)
-      .single()
-
-    await Promise.all([
-      admin.from("payments").insert({
-        procurement_id: procurement.id,
-        developer_id: asset.developer_id,
-        amount_cents: developerShareCents,
-        status: "paid",
-        paid_at: new Date().toISOString(),
-      }),
-      admin
-        .from("profiles")
-        .update({
-          total_earnings_cents:
-            Number(developerProfile?.total_earnings_cents ?? 0) + developerShareCents,
-        })
-        .eq("id", asset.developer_id),
-      admin
-        .from("assets")
-        .update({ procurement_count: asset.procurement_count + 1 })
-        .eq("id", asset.id),
-    ])
-
-    return dataResponse({
-      procurement: delivered,
-      download_payload:
-        input.delivery_method === "download" ? buildDownloadPayload(asset, variant) : null,
+    const { checkoutId, checkoutUrl } = await createCheckoutSession({
+      planId,
+      redirectUrl: `${getAppUrl()}/procurements/${procurement.id}`,
+      metadata: { procurement_id: procurement.id },
     })
+
+    await admin
+      .from("procurements")
+      .update({ whop_checkout_id: checkoutId })
+      .eq("id", procurement.id)
+
+    return dataResponse({ procurement, checkout_url: checkoutUrl, download_payload: null })
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Delivery failed"
+    const message = error instanceof Error ? error.message : "Could not start checkout"
     const { data: failed } = await admin
       .from("procurements")
       .update({ status: "failed", failure_reason: message })
@@ -178,6 +150,6 @@ export async function POST(request: Request) {
       .select("*")
       .single()
 
-    return dataResponse({ procurement: failed, download_payload: null })
+    return dataResponse({ procurement: failed, checkout_url: null, download_payload: null }, { status: 502 })
   }
 }
