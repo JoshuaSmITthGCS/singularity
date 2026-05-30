@@ -18,6 +18,7 @@ export type ProcurementStatus =
   | "delivered"
   | "failed"
 export type Confidence = "high" | "medium" | "low"
+export type Complexity = "low" | "medium" | "high"
 
 export type Profile = {
   id: string
@@ -27,6 +28,8 @@ export type Profile = {
   display_name: string | null
   avatar_url: string | null
   total_earnings_cents: number
+  singularity_uid: string
+  onchain_address: string | null
   whop_company_id: string | null
   whop_kyc_complete: boolean
   created_at: string
@@ -59,10 +62,48 @@ export type Asset = {
   test_code: string
   price_cents: number
   status: AssetStatus
+  complexity: Complexity | null
+  quality_score: number | null
+  content_hash: string | null
+  blockchain_uid: string | null
   whop_plan_id: string | null
   whop_product_id: string | null
   view_count: number
   procurement_count: number
+  created_at: string
+  updated_at: string
+}
+
+// §4.5 versioned structured tags.
+export type AssetTag = {
+  id: string
+  asset_id: string
+  version: number
+  source: "llm_v1" | "developer" | "admin"
+  genre: string[]
+  purpose: string[]
+  actions: string[]
+  keywords: string[]
+  compatible_engines: string[]
+  complexity: Complexity | null
+  short_description: string | null
+  long_description: string | null
+  confidence_score: number | null
+  created_at: string
+}
+
+// §5.1 client native environment config.
+export type ClientEnvConfig = {
+  id: string
+  user_id: string
+  primary_language: Language
+  secondary_languages: Language[]
+  target_engine: string | null
+  unit_system: "metric" | "imperial"
+  naming_convention: "snake_case" | "camelCase" | "PascalCase" | null
+  repo_target: string | null
+  target_branch: string
+  pr_mode: boolean
   created_at: string
   updated_at: string
 }
@@ -165,8 +206,45 @@ export type Database = {
       repos: Table<Repo, Omit<Repo, "id" | "connected_at"> & { id?: string; connected_at?: string }>
       assets: Table<
         Asset,
-        Omit<Asset, "id" | "created_at" | "updated_at" | "view_count" | "procurement_count" | "whop_plan_id" | "whop_product_id"> &
-          Partial<Pick<Asset, "id" | "created_at" | "updated_at" | "view_count" | "procurement_count" | "whop_plan_id" | "whop_product_id">>
+        Omit<
+          Asset,
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "view_count"
+          | "procurement_count"
+          | "whop_plan_id"
+          | "whop_product_id"
+          | "complexity"
+          | "quality_score"
+          | "content_hash"
+          | "blockchain_uid"
+        > &
+          Partial<
+            Pick<
+              Asset,
+              | "id"
+              | "created_at"
+              | "updated_at"
+              | "view_count"
+              | "procurement_count"
+              | "whop_plan_id"
+              | "whop_product_id"
+              | "complexity"
+              | "quality_score"
+              | "content_hash"
+              | "blockchain_uid"
+            >
+          >
+      >
+      asset_tags: Table<
+        AssetTag,
+        Omit<AssetTag, "id" | "created_at"> & Partial<Pick<AssetTag, "id" | "created_at">>
+      >
+      client_env_configs: Table<
+        ClientEnvConfig,
+        Omit<ClientEnvConfig, "id" | "created_at" | "updated_at"> &
+          Partial<Pick<ClientEnvConfig, "id" | "created_at" | "updated_at">>
       >
       asset_variants: Table<
         AssetVariant,

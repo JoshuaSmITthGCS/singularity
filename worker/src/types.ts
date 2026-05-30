@@ -10,6 +10,7 @@ export type Asset = {
   source_code: string
   test_code: string
   status: string
+  complexity: "low" | "medium" | "high" | null
 }
 
 export type AssetVariant = {

@@ -11,14 +11,14 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   LANGUAGES,
   LANGUAGE_LABEL,
-  PRICE_MAX_CENTS,
-  PRICE_MIN_CENTS,
   SHORT_DESCRIPTION_MAX_LENGTH,
   SUMMARY_MAX_LENGTH,
 } from "@/lib/constants"
+import { COMPLEXITY_LEVELS } from "@/lib/taxonomy"
+import { computeAssetPriceCents } from "@/lib/pricing"
 import { isDemoMode } from "@/lib/demo-mode"
 import { splitTags } from "@/lib/utils"
-import type { Language } from "@/types/database"
+import type { Complexity, Language } from "@/types/database"
 
 type SourceMode = "paste" | "github"
 type Step = "source" | "metadata" | "price" | "confirm"
@@ -32,7 +32,7 @@ const steps: Step[] = ["source", "metadata", "price", "confirm"]
 const stepLabel: Record<Step, string> = {
   source: "Source",
   metadata: "Catalog",
-  price: "Ledger",
+  price: "Pricing",
   confirm: "Verify",
 }
 
@@ -56,7 +56,7 @@ export function PublishForm() {
   const [summary, setSummary] = useState("")
   const [longDescription, setLongDescription] = useState("")
   const [tags, setTags] = useState("")
-  const [priceCents, setPriceCents] = useState(1500)
+  const [complexity, setComplexity] = useState<Complexity>("medium")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -140,7 +140,7 @@ export function PublishForm() {
     if (step === "metadata") {
       return title.trim() && shortDescription.trim() && summary.trim().length >= 40
     }
-    if (step === "price") return priceCents >= PRICE_MIN_CENTS && priceCents <= PRICE_MAX_CENTS
+    if (step === "price") return COMPLEXITY_LEVELS.includes(complexity)
 
     return true
   }
@@ -179,12 +179,15 @@ export function PublishForm() {
         short_description: shortDescription,
         long_description: longDescription || null,
         summary,
-        tags: parsedTags,
+        // §4.5 structured tags — keywords carry the freeform tag list; the
+        // worker enriches genre/purpose/actions during ingestion.
+        tags: { keywords: parsedTags },
+        // §7.4 price is computed from complexity + quality, not set here.
+        complexity,
         source_path: mode === "github" ? sourcePath : null,
         test_path: mode === "github" ? testPath : null,
         source_code: sourceCode,
         test_code: testCode,
-        price_cents: priceCents,
       }),
     })
 
@@ -383,18 +386,27 @@ export function PublishForm() {
       ) : null}
 
       {step === "price" ? (
-        <section className="space-y-2">
-          <Label htmlFor="price">Price in cents</Label>
-          <Input
-            id="price"
-            type="number"
-            min={PRICE_MIN_CENTS}
-            max={PRICE_MAX_CENTS}
-            value={priceCents}
-            onChange={(event) => setPriceCents(Number(event.target.value))}
-          />
+        <section className="space-y-3">
+          <Label htmlFor="complexity">Complexity tier</Label>
+          <select
+            id="complexity"
+            value={complexity}
+            onChange={(event) => setComplexity(event.target.value as Complexity)}
+            className="h-10 w-full rounded-md border border-border bg-panel px-3 text-sm"
+          >
+            {COMPLEXITY_LEVELS.map((level) => (
+              <option key={level} value={level}>
+                {level[0].toUpperCase() + level.slice(1)}
+              </option>
+            ))}
+          </select>
           <p className="text-sm text-muted-foreground">
-            Allowed range is {PRICE_MIN_CENTS} to {PRICE_MAX_CENTS} cents. Delivered procurements use the 70/30 creator split.
+            Pricing is computed from the platform unit-economics formula (complexity tier + verified
+            quality score), not set manually. Estimated starting price:{" "}
+            <span className="font-medium text-foreground">
+              ${(computeAssetPriceCents({ complexity, qualityScore: 0 }) / 100).toFixed(2)}
+            </span>{" "}
+            (a quality bonus is added after verification). Delivered procurements use the 70/25/5 split.
           </p>
         </section>
       ) : null}
@@ -415,8 +427,12 @@ export function PublishForm() {
               <dd>{LANGUAGE_LABEL[language]}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Price</dt>
-              <dd>${(priceCents / 100).toFixed(2)}</dd>
+              <dt className="text-muted-foreground">Complexity</dt>
+              <dd>{complexity[0].toUpperCase() + complexity.slice(1)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Est. price</dt>
+              <dd>${(computeAssetPriceCents({ complexity, qualityScore: 0 }) / 100).toFixed(2)}</dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Tags</dt>

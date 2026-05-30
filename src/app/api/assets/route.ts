@@ -1,7 +1,9 @@
+import { createHash } from "node:crypto"
 import { dataResponse, errorResponse } from "@/lib/api"
 import { LANGUAGES } from "@/lib/constants"
 import { demoAssets } from "@/lib/demo-data"
 import { isDemoMode } from "@/lib/demo-mode"
+import { computeAssetPriceCents } from "@/lib/pricing"
 import { createClient } from "@/lib/supabase/server"
 import { createAssetSchema } from "@/lib/validation"
 
@@ -11,7 +13,9 @@ export async function POST(request: Request) {
     const parsed = createAssetSchema.safeParse(body)
 
     if (!parsed.success) {
-      return errorResponse(parsed.error.issues[0]?.message ?? "Asset payload is invalid", 400)
+      return errorResponse(parsed.error.issues[0]?.message ?? "Asset payload is invalid", 400, {
+        code: "ASSET_VALIDATION_FAILED",
+      })
     }
 
     return dataResponse({
@@ -22,6 +26,11 @@ export async function POST(request: Request) {
         short_description: parsed.data.short_description,
         summary: parsed.data.summary,
         source_language: parsed.data.source_language,
+        complexity: parsed.data.complexity,
+        // §7.4: price is formula-derived. Pre-analysis quality_score is unknown,
+        // so the initial price uses complexity only (quality bonus added once
+        // the ingestion pipeline scores the asset).
+        price_cents: computeAssetPriceCents({ complexity: parsed.data.complexity, qualityScore: 0 }),
         status: "verifying",
       },
     })
@@ -32,16 +41,24 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) return errorResponse("Sign in first", 401)
+  if (!user) return errorResponse("Sign in first", 401, { code: "UNAUTHENTICATED" })
 
   const body = await request.json().catch(() => null)
   const parsed = createAssetSchema.safeParse(body)
 
   if (!parsed.success) {
-    return errorResponse(parsed.error.issues[0]?.message ?? "Asset payload is invalid", 400)
+    return errorResponse(parsed.error.issues[0]?.message ?? "Asset payload is invalid", 400, {
+      code: "ASSET_VALIDATION_FAILED",
+    })
   }
 
   const input = parsed.data
+
+  // §7.2: content hash of the canonical source snapshot, anchored with the asset.
+  const contentHash = createHash("sha256").update(input.source_code).digest("hex")
+  // §7.4: initial price from complexity; quality bonus applied post-analysis.
+  const priceCents = computeAssetPriceCents({ complexity: input.complexity, qualityScore: 0 })
+
   const { data: asset, error: assetError } = await supabase
     .from("assets")
     .insert({
@@ -53,18 +70,40 @@ export async function POST(request: Request) {
       short_description: input.short_description,
       long_description: input.long_description || null,
       summary: input.summary,
-      tags: input.tags,
+      // legacy freeform tags column retained; structured tags live in asset_tags
+      tags: input.tags?.keywords ?? [],
+      complexity: input.complexity,
+      content_hash: contentHash,
+      price_cents: priceCents,
       source_path: input.source_path || null,
       test_path: input.test_path || null,
       source_code: input.source_code,
       test_code: input.test_code,
-      price_cents: input.price_cents,
       status: "verifying",
     })
     .select("*")
     .single()
 
-  if (assetError) return errorResponse(assetError.message, 400)
+  if (assetError) return errorResponse(assetError.message, 400, { code: "ASSET_CREATE_FAILED" })
+
+  // §4.5: persist developer-provided structured tags as the v1 tag record with
+  // source 'developer'. The worker appends an 'llm_v1' version during ingestion.
+  if (input.tags) {
+    await supabase.from("asset_tags").insert({
+      asset_id: asset.id,
+      version: 1,
+      source: "developer",
+      genre: input.tags.genre ?? [],
+      purpose: input.tags.purpose ?? [],
+      actions: input.tags.actions ?? [],
+      keywords: input.tags.keywords ?? [],
+      compatible_engines: input.tags.compatible_engines ?? [],
+      complexity: input.complexity,
+      short_description: input.short_description,
+      long_description: input.long_description || null,
+      confidence_score: 1.0,
+    })
+  }
 
   const { error: variantsError } = await supabase.from("asset_variants").insert(
     LANGUAGES.map((language) => ({
@@ -76,7 +115,7 @@ export async function POST(request: Request) {
 
   if (variantsError) {
     await supabase.from("assets").delete().eq("id", asset.id)
-    return errorResponse(variantsError.message, 400)
+    return errorResponse(variantsError.message, 400, { code: "ASSET_VARIANT_CREATE_FAILED" })
   }
 
   return dataResponse({ asset })

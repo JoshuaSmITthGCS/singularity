@@ -3,6 +3,7 @@ import { claimNextVariant } from "./claim.js"
 import { supabase } from "./db.js"
 import { runTests } from "./test-runner.js"
 import { translateVariant } from "./translator.js"
+import { computeAssetPriceCents, computeQualityScore, type Complexity } from "./pricing.js"
 import type { Asset } from "./types.js"
 
 async function main() {
@@ -78,7 +79,19 @@ async function processVariant(variantId: string, assetId: string, targetLanguage
     .throwOnError()
 
   if (targetLanguage === asset.source_language && testResult.status === "passed" && asset.status === "verifying") {
-    await supabase.from("assets").update({ status: "published" }).eq("id", asset.id).throwOnError()
+    // §7.4: derive a quality score from verification results and reprice the
+    // asset via the unit-economics formula (complexity tier + quality bonus).
+    const qualityScore = computeQualityScore(testResult)
+    const priceCents = computeAssetPriceCents({
+      complexity: (asset.complexity as Complexity) ?? "medium",
+      qualityScore,
+    })
+
+    await supabase
+      .from("assets")
+      .update({ status: "published", quality_score: qualityScore, price_cents: priceCents })
+      .eq("id", asset.id)
+      .throwOnError()
   }
 
   console.log(`Processed ${variantId}: ${testResult.status}`)
