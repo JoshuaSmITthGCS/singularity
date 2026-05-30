@@ -73,6 +73,26 @@ export async function createAccountLink(input: {
   return link.url
 }
 
+// Whether a connected company has finished onboarding and can take payments /
+// receive payouts. Used to flip whop_kyc_complete once a developer returns from
+// the hosted KYC flow.
+// VERIFY field names against current Whop docs (charges/payouts enabled flags).
+export async function isConnectedCompanyReady(companyId: string): Promise<boolean> {
+  const company = await whopFetch<{
+    charges_enabled?: boolean
+    payouts_enabled?: boolean
+    kyc_status?: string
+    status?: string
+  }>(`/api/v2/companies/${companyId}`, { method: "GET" })
+
+  return Boolean(
+    company.charges_enabled ??
+      company.payouts_enabled ??
+      company.kyc_status === "approved" ??
+      company.status === "active"
+  )
+}
+
 // --- Asset products + checkout ------------------------------------------
 
 // Create a product on the developer's connected company. Returns product id.
