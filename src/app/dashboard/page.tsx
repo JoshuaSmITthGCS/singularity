@@ -4,6 +4,8 @@ import { GitHubInstallButton } from "@/components/GitHubInstallButton"
 import { LanguageBadge } from "@/components/LanguageBadge"
 import { ProcurementStatus } from "@/components/ProcurementStatus"
 import { ServiceNotice } from "@/components/ServiceNotice"
+import { WhopConnectButton } from "@/components/WhopConnectButton"
+import { WhopPayoutsButton } from "@/components/WhopPayoutsButton"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { LANGUAGES, LANGUAGE_LABEL } from "@/lib/constants"
@@ -83,6 +85,21 @@ export default async function DashboardPage({
     variants = results[2].data
     procurements = results[3].data
     payments = results[4].data
+
+    // Self-heal onboarding state: if the developer created a connected Whop
+    // company but we haven't recorded KYC completion, re-check with Whop and
+    // persist it once they're cleared. Bounded — only runs while pending.
+    if (profile?.whop_company_id && !profile.whop_kyc_complete) {
+      try {
+        const { isConnectedCompanyReady } = await import("@/lib/whop/client")
+        if (await isConnectedCompanyReady(profile.whop_company_id)) {
+          await supabase.from("profiles").update({ whop_kyc_complete: true }).eq("id", user.id)
+          profile = { ...profile, whop_kyc_complete: true }
+        }
+      } catch (error) {
+        console.error("Whop onboarding re-check failed", error)
+      }
+    }
     } catch (error) {
       console.error("Dashboard data unavailable", error)
     }
@@ -94,6 +111,7 @@ export default async function DashboardPage({
   })
   const publishedCount = (assets ?? []).filter((asset) => asset.status === "published").length
   const verifyingCount = (assets ?? []).filter((asset) => asset.status === "verifying").length
+  const payoutsReady = Boolean(profile?.whop_company_id && profile?.whop_kyc_complete)
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
@@ -135,6 +153,24 @@ export default async function DashboardPage({
           <p className="mt-3 text-sm text-muted-foreground">Stage 1 assets</p>
           <p className="mt-2 text-2xl font-semibold">{publishedCount}</p>
           <p className="mt-1 text-xs text-muted-foreground">{verifyingCount} verifying</p>
+        </div>
+      </section>
+
+      <section className="mb-8 rounded-lg border border-border bg-panel p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Payouts</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {payoutsReady
+                ? "Whop is connected. Buyer payments split to your balance automatically — withdraw any time."
+                : "Connect a Whop account to receive payments. Until this is done, your published assets can't be purchased."}
+            </p>
+          </div>
+          {payoutsReady ? (
+            <WhopPayoutsButton />
+          ) : (
+            <WhopConnectButton connected={Boolean(profile?.whop_company_id)} />
+          )}
         </div>
       </section>
 

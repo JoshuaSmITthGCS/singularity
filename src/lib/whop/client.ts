@@ -88,8 +88,7 @@ export async function isConnectedCompanyReady(companyId: string): Promise<boolea
   return Boolean(
     company.charges_enabled ??
       company.payouts_enabled ??
-      company.kyc_status === "approved" ??
-      company.status === "active"
+      (company.kyc_status === "approved" || company.status === "active")
   )
 }
 
