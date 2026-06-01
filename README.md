@@ -1,126 +1,135 @@
-# Singularity MVP
+# Singularity
 
-Singularity is a marketplace for tested code assets. Developers publish source code and tests, the worker verifies the original asset, and buyers can procure checked TypeScript, JavaScript, and Java variants.
+**Publish your game code once. Sell it, verified, in every language.**
 
-By default the MVP runs in demo mode with seeded data and simulated publish/procurement actions. Set `NEXT_PUBLIC_REAL_BACKEND=true` and `SINGULARITY_REAL_BACKEND=true` to use Supabase, GitHub, and worker-backed flows.
+Singularity is a marketplace for game-development code assets. A developer
+uploads source code and its tests in one language; Singularity uses an LLM to
+**translate** the asset into the other supported languages, **runs the
+translated tests in a Docker sandbox**, and only lists the variants that
+**actually pass**. Buyers purchase a tested variant in the language and engine
+they already use — delivered as a GitHub pull request or a direct download.
 
-## Documentation
+> The core promise: **buyers never receive code that hasn't been compiled and
+> tested in their target language first.**
 
-- **Quick Start**: This README (you are here)
-- **Complete Guide**: [CLAUDE.md](./CLAUDE.md) - Comprehensive project documentation
-- **Netlify Deployment**: [NETLIFY_FIXES.md](./NETLIFY_FIXES.md) - Deployment troubleshooting
-- **Production Setup**: [DEPLOYMENT.md](./DEPLOYMENT.md) - Full deployment guide
-- **Pitch Deck**: [PITCH_DECK.md](./PITCH_DECK.md) - Investor presentation
-- **Quick Reference**: [QUICK_START.md](./QUICK_START.md) - One-page cheat sheet
-- **Build Spec**: [BUILD_PROMPT.md](./BUILD_PROMPT.md) - Technical requirements
+| | |
+| --- | --- |
+| **Languages** | TypeScript · JavaScript · Java · C# · C++ |
+| **Engines** | Unity, Unreal, Godot, MonoGame, libGDX, Phaser, Three.js, … |
+| **Stack** | Next.js 15 · React 19 · Supabase · OpenAI · Docker · Whop |
+| **Status** | MVP — runs out of the box in demo mode |
 
-## Prerequisites
+---
 
-- Node 20 or newer
-- pnpm via Corepack
-- Docker Desktop
-- Supabase CLI
-- A GitHub App
-- An OpenAI API key
+## Quick start (demo mode)
 
-## Local Setup
+The app boots with **no external services** — seeded data, simulated
+publish/purchase. This is the fastest way to see it.
 
 ```bash
 corepack enable
 pnpm install
-cp .env.local.example .env.local
-supabase start
-supabase db reset
-pnpm run worker:build-images
-pnpm dev
-pnpm worker
+pnpm dev          # http://localhost:3000
 ```
 
-Run `pnpm dev` and `pnpm worker` in separate terminals. Supabase Studio runs at `http://localhost:54323`.
+That's it. Browse the marketplace, open the publish wizard, walk a purchase —
+all backed by fixtures in `src/lib/demo-data.ts`.
 
-## Environment
-
-Fill in `.env.local` after copying `.env.local.example`.
-
-### Supabase
-
-After `supabase start`, copy these values from the CLI output:
-
-- `NEXT_PUBLIC_SUPABASE_URL`: local API URL, usually `http://localhost:54321`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: local anon key
-- `SUPABASE_SERVICE_ROLE_KEY`: local service role key for API delivery and the worker
-
-### OpenAI
-
-- `OPENAI_API_KEY`: key used by the worker for cross-language adaptation
-- `OPENAI_MODEL`: optional model override; defaults to `gpt-5.5`
-
-### GitHub App
-
-Create a GitHub App at `https://github.com/settings/apps/new`.
-
-Use these settings:
-
-- Homepage URL: `http://localhost:3000`
-- Callback URL: `http://localhost:54321/auth/v1/callback`
-- Setup URL: `http://localhost:3000/dashboard`
-- Webhook URL: `http://localhost:3000/api/webhooks/github`
-- Webhook secret: any strong random string
-- Repository permissions: Contents read/write, Pull requests read/write, Metadata read-only
-- Account permissions: Email read-only is enough for auth metadata
-- Subscribe to installation events if webhooks are enabled
-
-Then set:
-
-- `GITHUB_APP_ID`: App ID from the app settings page
-- `GITHUB_APP_SLUG`: slug from the public app URL, for example `my-singularity-app`
-- `GITHUB_APP_INSTALL_URL`: optional full install URL if you do not want to use the slug
-- `GITHUB_APP_CLIENT_ID`: Client ID from the app settings page
-- `GITHUB_APP_CLIENT_SECRET`: generated client secret
-- `GITHUB_APP_PRIVATE_KEY`: private key contents with newlines escaped as `\n`
-- `GITHUB_APP_WEBHOOK_SECRET`: the webhook secret you chose
-
-In Supabase Studio, enable GitHub under Authentication providers and use the same GitHub App client ID and secret.
-
-## Worker Images
-
-Build the sandbox images before running adaptations:
+## Running the real backend
 
 ```bash
-pnpm run worker:build-images
+cp .env.local.example .env.local
+# Fill in Supabase, Whop, GitHub App, and OpenAI values, then set:
+#   NEXT_PUBLIC_REAL_BACKEND=true
+#   SINGULARITY_REAL_BACKEND=true
+
+supabase start && supabase db reset      # local Postgres + migrations
+pnpm run worker:build-images             # build the 5 Docker test images
+
+pnpm dev          # terminal 1 — Next.js app + API
+pnpm worker       # terminal 2 — translation/verification worker
 ```
 
-The worker uses:
+**Prerequisites for the real backend:** Node 20+, pnpm (via Corepack), Docker,
+the Supabase CLI, a GitHub App, a Whop platform company + API key, and an OpenAI
+API key.
 
-- `singularity-node-runner`
-- `singularity-typescript-runner`
-- `singularity-java-runner`
+---
+
+## How it works
+
+```
+Developer publishes (1 language)
+        │
+        ▼
+  assets row (status: verifying) + one asset_variant per language (queued)
+        │
+        ▼
+  Worker:  claim → translate (OpenAI) → test in Docker → pass/fail
+        │
+        ▼
+  Source variant passes → quality score computed → price set → status: published
+        │
+        ▼
+  Marketplace shows per-language verification badges (✓ / ⏳ / ✗)
+        │
+        ▼
+  Buyer purchases a passing variant → Whop payment → delivered as GitHub PR or download
+```
+
+Pricing is **computed**, not set by hand: a unit-economics formula combines the
+asset's complexity tier with its verified quality score. Revenue splits
+**70% developer / 25% platform / 5% referral reserve**.
+
+---
+
+## Project layout
+
+```
+src/app/        Next.js routes (pages + /api)
+src/components/  React UI (publish wizard, marketplace, purchase, Whop/GitHub)
+src/lib/         Supabase/GitHub/Whop clients, pricing, taxonomy, validation, search
+src/types/       Generated Supabase types
+worker/          Translation + Docker verification worker (+ per-language Dockerfiles)
+supabase/        SQL migrations + seed
+```
 
 ## Scripts
 
-- `pnpm dev`: Next.js app on `http://localhost:3000`
-- `pnpm build`: production build
-- `pnpm lint`: ESLint
-- `pnpm worker`: adaptation and test worker
-- `pnpm worker:build-images`: Docker sandbox images
-- `pnpm run generate-types`: regenerate Supabase types from local DB
+| Command | Does |
+| --- | --- |
+| `pnpm dev` | Run the app (Turbopack) |
+| `pnpm build` / `pnpm start` | Production build / serve |
+| `pnpm lint` | ESLint |
+| `pnpm exec tsc --noEmit` | Type-check |
+| `pnpm worker` | Run the translation worker |
+| `pnpm run worker:build-images` | Build the 5 language Docker images |
+| `pnpm run generate-types` | Regenerate `src/types/database.ts` from Supabase |
 
-## MVP Flow
+---
 
-1. Developer signs in with GitHub.
-2. Developer installs the GitHub App or uses paste mode.
-3. Developer publishes source and tests with a public summary and price.
-4. Worker claims the queued variants, adapts non-source languages, and runs Docker tests.
-5. Marketplace lists the asset after the source-language checks pass.
-6. Buyer selects a green target and chooses download or GitHub PR delivery.
-7. Procurement is marked delivered and developer earnings are recorded.
+## Documentation
 
-## Production Deployment
+- **[CLAUDE.md](./CLAUDE.md)** — full codebase breakdown: architecture, flows,
+  schema, conventions. Read this before contributing.
+- **[INVESTOR.md](./INVESTOR.md)** — business model, market, unit economics, and
+  a PRD/technical overview of the platform.
 
-This MVP is configured for **Netlify** deployment. See [DEPLOYMENT.md](./DEPLOYMENT.md) for:
-- Netlify configuration and environment variables
-- Supabase hosted setup
-- Worker deployment options (Railway, Render, Fly.io)
-- Production checklist and monitoring
+## Operational endpoints
 
-Note: The worker requires Docker and cannot run on Netlify. Deploy it separately on Railway, Render, or similar Docker-supporting platforms.
+`GET /api/health` (liveness) · `GET /api/ready` (readiness) ·
+`GET /.well-known/security.txt` (disclosure contact).
+
+---
+
+## Contributing
+
+1. Branch from the default branch.
+2. Keep the **demo-mode branch first** in any API route or data loader.
+3. Validate input with a Zod schema in `src/lib/validation.ts`.
+4. Run `pnpm lint` and `pnpm exec tsc --noEmit` before pushing.
+5. Commit with conventional prefixes (`feat:`, `fix:`, `docs:`, …).
+
+## License
+
+MIT (placeholder — to be finalized).
