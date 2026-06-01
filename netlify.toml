@@ -27,5 +27,6 @@
 # NEXT_PUBLIC_APP_URL - Your Netlify production URL
 # NEXT_PUBLIC_REAL_BACKEND - Set to true to disable demo mode in the browser
 # SINGULARITY_REAL_BACKEND - Set to true to disable demo mode on the server
-# STRIPE_SECRET_KEY - Stripe secret key (Phase 5)
-# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY - Stripe publishable key (Phase 5)
+# WHOP_API_KEY - Whop platform company API key (payments/payouts)
+# WHOP_WEBHOOK_SECRET - Secret for verifying Whop webhook signatures
+# WHOP_PLATFORM_COMPANY_ID - Platform parent company id (biz_...)

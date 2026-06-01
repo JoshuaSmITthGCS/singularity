@@ -34,8 +34,8 @@ export const LANGUAGE_ENGINE_TAGS: Record<Language, string[]> = {
   cpp: ["Unreal Engine", "Custom", "C++", "Native"],
 }
 
-export const PRICE_MIN_CENTS = 500
-export const PRICE_MAX_CENTS = 50000
+// Price is computed from the unit-economics formula (see src/lib/pricing.ts),
+// not set by developers, so there is no manual min/max range to enforce.
 export const DEVELOPER_SHARE_RATE = 0.7
 export const PLATFORM_FEE_RATE = 0.25
 export const REFERRAL_RESERVE_RATE = 0.05
