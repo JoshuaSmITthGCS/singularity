@@ -144,18 +144,18 @@ Only build these when metrics justify them; each adds real operational cost.
 
 ---
 
-## Optional track — translation provider
+## Translation provider — Claude (done)
 
-Translation currently uses OpenAI (`worker/src/translator.ts`, `OPENAI_MODEL`).
-If you want to evaluate **Claude** for translation/tagging quality, do it behind
-a provider interface so it's a config switch, not a rewrite:
+Translation runs on **Anthropic Claude** (`worker/src/translator.ts`,
+`ANTHROPIC_MODEL`, default `claude-opus-4-8`) via the Messages API: Zod-typed
+structured output (`output_config.format`), adaptive thinking, streaming for
+large outputs, and prompt caching on the static translation-rules preamble.
 
-- Introduce `worker/src/llm.ts` with a `translate()` / `tag()` interface.
-- Implement an OpenAI adapter (current behavior) and a Claude adapter
-  (`@anthropic-ai/sdk`, with prompt caching on the static rule preamble).
-- Select via an env var (e.g. `LLM_PROVIDER=openai|anthropic`).
-- Keep the Zod structured-output schema identical across providers.
-- A/B the two on a fixed asset set and compare pass rates + confidence.
+Follow-ups if you want them:
+- Apply the same Claude structured-output call to the Phase 1 auto-tagging step.
+- Tune `effort` (currently `medium`) and `max_tokens` per pass rate / cost.
+- If you ever need multi-provider A/B, factor the call behind a `worker/src/llm.ts`
+  interface — but keep the Zod schema identical across providers.
 
 > Keep API keys in local env / deployment secrets only — never in the repo.
 

@@ -16,7 +16,7 @@ they already use — delivered as a GitHub pull request or a direct download.
 | --- | --- |
 | **Languages** | TypeScript · JavaScript · Java · C# · C++ |
 | **Engines** | Unity, Unreal, Godot, MonoGame, libGDX, Phaser, Three.js, … |
-| **Stack** | Next.js 15 · React 19 · Supabase · OpenAI · Docker · Whop |
+| **Stack** | Next.js 15 · React 19 · Supabase · Claude · Docker · Whop |
 | **Status** | MVP — runs out of the box in demo mode |
 
 ---
@@ -39,7 +39,7 @@ all backed by fixtures in `src/lib/demo-data.ts`.
 
 ```bash
 cp .env.local.example .env.local
-# Fill in Supabase, Whop, GitHub App, and OpenAI values, then set:
+# Fill in Supabase, Whop, GitHub App, and Anthropic values, then set:
 #   NEXT_PUBLIC_REAL_BACKEND=true
 #   SINGULARITY_REAL_BACKEND=true
 
@@ -51,8 +51,8 @@ pnpm worker       # terminal 2 — translation/verification worker
 ```
 
 **Prerequisites for the real backend:** Node 20+, pnpm (via Corepack), Docker,
-the Supabase CLI, a GitHub App, a Whop platform company + API key, and an OpenAI
-API key.
+the Supabase CLI, a GitHub App, a Whop platform company + API key, and an
+Anthropic API key.
 
 ---
 
@@ -65,7 +65,7 @@ Developer publishes (1 language)
   assets row (status: verifying) + one asset_variant per language (queued)
         │
         ▼
-  Worker:  claim → translate (OpenAI) → test in Docker → pass/fail
+  Worker:  claim → translate (Claude) → test in Docker → pass/fail
         │
         ▼
   Source variant passes → quality score computed → price set → status: published

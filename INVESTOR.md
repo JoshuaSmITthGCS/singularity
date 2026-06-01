@@ -109,7 +109,7 @@ can trust because the tests passed* is the product.
 | --- | --- |
 | Web + API | Next.js 15 (App Router), React 19, TypeScript, Tailwind 4 |
 | Data + auth | Supabase (Postgres, Auth, Row-Level Security), GitHub OAuth |
-| AI translation | OpenAI (Responses API, structured/typed output) |
+| AI translation | Anthropic Claude (Messages API, structured/typed output, prompt caching) |
 | Verification | Docker sandboxes, one image per language, driven via `dockerode` |
 | Payments | Whop ("Whop for Platforms" connected accounts + payouts) |
 | Worker | Long-running Node process; `FOR UPDATE SKIP LOCKED` job queue |

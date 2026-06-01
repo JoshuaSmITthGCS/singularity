@@ -54,8 +54,10 @@ of the TRD and `worker/src/translator.ts`).
 **Database & Auth** — Supabase (Postgres + Auth + Row-Level Security). GitHub
 OAuth as the auth provider. Generated types in `src/types/database.ts`.
 
-**AI translation** — OpenAI (`openai` v6, model from `OPENAI_MODEL`) via the
-Responses API with a Zod-typed structured output schema. Lives in the worker.
+**AI translation** — Anthropic Claude (`@anthropic-ai/sdk`, model from
+`ANTHROPIC_MODEL`, default `claude-opus-4-8`) via the Messages API with Zod-typed
+structured output (`output_config.format`), adaptive thinking, and prompt caching
+on the static translation-rules preamble. Lives in the worker.
 
 **Test execution** — Docker sandboxes, one image per language
 (`worker/docker/*.Dockerfile`), driven by `dockerode`. Two-stage: install
@@ -80,7 +82,7 @@ isDemoMode() === true  // unless NEXT_PUBLIC_REAL_BACKEND="true" AND SINGULARITY
 
 - **Demo mode (default):** all API routes and pages serve seeded fixtures from
   `src/lib/demo-data.ts`. Publish/purchase are simulated. No Supabase, Whop,
-  GitHub, OpenAI, or Docker required. This is what runs on a fresh clone.
+  GitHub, Anthropic, or Docker required. This is what runs on a fresh clone.
 - **Real backend:** set both `NEXT_PUBLIC_REAL_BACKEND=true` and
   `SINGULARITY_REAL_BACKEND=true`, supply the env vars, and the same routes hit
   Supabase / Whop / GitHub / the worker.
@@ -144,7 +146,7 @@ singularity/
 │   ├── src/
 │   │   ├── index.ts                      # main poll→translate→test→publish loop
 │   │   ├── claim.ts                      # SKIP LOCKED job claiming
-│   │   ├── translator.ts                 # OpenAI translation + engine adaptation rules
+│   │   ├── translator.ts                 # Claude translation + engine adaptation rules
 │   │   ├── test-runner.ts                # Docker two-stage execution
 │   │   ├── pricing.ts                    # worker-side mirror of pricing formula
 │   │   ├── db.ts, config.ts, types.ts
@@ -182,7 +184,7 @@ singularity/
 1. `claimNextVariant()` claims a queued variant with `SKIP LOCKED`.
 2. Loads the parent asset.
 3. If the variant language **==** the source language, reuse code/tests as-is;
-   otherwise call `translateVariant()` (OpenAI) to translate code + tests and
+   otherwise call `translateVariant()` (Claude) to translate code + tests and
    produce an `adaptation_log`, PR notes, confidence, and dependency manifests.
 4. `runTests()` executes in the language's Docker image (install stage →
    network-off test stage). Result → variant `status: passed | failed` + counts.
@@ -280,7 +282,7 @@ pnpm install
 pnpm dev                      # http://localhost:3000
 
 # Real backend:
-cp .env.local.example .env.local   # fill in Supabase / Whop / GitHub / OpenAI
+cp .env.local.example .env.local   # fill in Supabase / Whop / GitHub / Anthropic
 # set NEXT_PUBLIC_REAL_BACKEND=true and SINGULARITY_REAL_BACKEND=true
 supabase start && supabase db reset
 pnpm run worker:build-images       # build the 5 Docker test images
@@ -318,7 +320,7 @@ pnpm exec tsc --noEmit
 
 ## 13. Status & deferred work
 
-**Implemented (MVP):** publish (paste + GitHub), OpenAI translation with
+**Implemented (MVP):** publish (paste + GitHub), Claude translation with
 engine-aware adaptation, Docker verification across all five languages,
 marketplace with verification badges, structured TagSchema + filtered search,
 formula pricing, client env config, GitHub PR + download delivery, Whop

@@ -16,8 +16,8 @@
 # NEXT_PUBLIC_SUPABASE_URL - Your hosted Supabase URL
 # NEXT_PUBLIC_SUPABASE_ANON_KEY - Supabase anon key
 # SUPABASE_SERVICE_ROLE_KEY - Supabase service role key
-# OPENAI_API_KEY - OpenAI API key used by the worker
-# OPENAI_MODEL - Optional OpenAI model override
+# ANTHROPIC_API_KEY - Anthropic Claude API key used by the worker
+# ANTHROPIC_MODEL - Optional Claude model override (defaults to claude-opus-4-8)
 # GITHUB_APP_ID - GitHub App ID
 # GITHUB_APP_SLUG - GitHub App slug
 # GITHUB_APP_CLIENT_ID - GitHub App Client ID
