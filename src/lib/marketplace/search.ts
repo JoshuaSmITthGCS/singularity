@@ -2,27 +2,10 @@ import { createClient } from "@/lib/supabase/server"
 import { isDemoMode } from "@/lib/demo-mode"
 import { demoAssets } from "@/lib/demo-data"
 import type { SearchQueryInput } from "@/lib/validation"
+import type { MarketplaceSearchRow } from "@/types/database"
 
 // §5.2 search result row from the marketplace_search view.
-export type SearchResult = {
-  id: string
-  developer_id: string
-  primary_language: string
-  title: string
-  short_description: string
-  summary: string
-  price_cents: number
-  quality_score: number | null
-  complexity: string | null
-  view_count: number
-  procurement_count: number
-  created_at: string
-  genre: string[] | null
-  purpose: string[] | null
-  actions: string[] | null
-  keywords: string[] | null
-  compatible_engines: string[] | null
-}
+export type SearchResult = MarketplaceSearchRow
 
 const MIN_RESULTS = 5
 const MAX_RESULTS = 10
@@ -68,7 +51,7 @@ export async function searchAssets(params: SearchQueryInput): Promise<{
       return { results: [], expanded: [] }
     }
 
-    const results = (data ?? []) as SearchResult[]
+    const results = data ?? []
 
     // SEARCH-001 fallback: broaden when too few strict matches.
     if (results.length < MIN_RESULTS) {
@@ -78,7 +61,7 @@ export async function searchAssets(params: SearchQueryInput): Promise<{
         .order("procurement_count", { ascending: false })
         .limit(MAX_RESULTS)
       const ids = new Set(results.map((r) => r.id))
-      const expanded = ((broad ?? []) as SearchResult[])
+      const expanded = (broad ?? [])
         .filter((r) => !ids.has(r.id))
         .slice(0, MAX_RESULTS - results.length)
       return { results, expanded }

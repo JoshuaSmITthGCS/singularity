@@ -67,7 +67,17 @@ export async function PUT(request: Request) {
 
   const { data, error } = await supabase
     .from("client_env_configs")
-    .upsert({ user_id: user.id, ...parsed.data }, { onConflict: "user_id" })
+    .upsert(
+      {
+        user_id: user.id,
+        ...parsed.data,
+        // Zod optional fields yield `undefined`; the column type is `string | null`.
+        target_engine: parsed.data.target_engine ?? null,
+        naming_convention: parsed.data.naming_convention ?? null,
+        repo_target: parsed.data.repo_target ?? null,
+      },
+      { onConflict: "user_id" }
+    )
     .select("*")
     .single()
 

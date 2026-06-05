@@ -180,6 +180,27 @@ export type MarketplaceAsset = Pick<
   | "created_at"
 >
 
+// §5.2 marketplace_search view — published assets joined to their latest tag
+// version. Code/tests omitted; structured filter fields exposed.
+export type MarketplaceSearchRow = {
+  id: string
+  developer_id: string
+  primary_language: Language
+  title: string
+  short_description: string
+  summary: string
+  price_cents: number
+  quality_score: number | null
+  complexity: Complexity | null
+  view_count: number
+  procurement_count: number
+  created_at: string
+  genre: string[] | null
+  purpose: string[] | null
+  actions: string[] | null
+  keywords: string[] | null
+  compatible_engines: string[] | null
+}
 export type MarketplaceVariant = Pick<
   AssetVariant,
   | "id"
@@ -291,6 +312,12 @@ export type Database = {
       }
       marketplace_variants: {
         Row: MarketplaceVariant
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      marketplace_search: {
+        Row: MarketplaceSearchRow
         Insert: never
         Update: never
         Relationships: []

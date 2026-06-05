@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # Runs entirely in demo mode — no Supabase/Whop/GitHub/Anthropic secrets needed.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck (app)
+        run: pnpm typecheck
+
+      - name: Typecheck (worker)
+        run: pnpm --dir worker exec tsc --noEmit
+
+      - name: Unit tests
+        run: pnpm test

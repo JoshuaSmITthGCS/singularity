@@ -30,7 +30,7 @@ export function WhopPayoutsButton({ className }: { className?: string }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <Button type="button" variant="outline" onClick={open} disabled={loading} className={className}>
+      <Button type="button" variant="secondary" onClick={open} disabled={loading} className={className}>
         {loading ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Wallet size={16} aria-hidden />}
         Manage payouts
         <ExternalLink size={14} aria-hidden />
