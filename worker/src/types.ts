@@ -7,6 +7,8 @@ export type Asset = {
   developer_id: string
   source_language: Language
   title: string
+  short_description: string | null
+  summary: string | null
   source_code: string
   test_code: string
   status: string

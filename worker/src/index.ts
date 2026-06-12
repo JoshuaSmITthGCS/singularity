@@ -3,6 +3,7 @@ import { claimNextVariant } from "./claim.js"
 import { supabase } from "./db.js"
 import { runTests } from "./test-runner.js"
 import { translateVariant } from "./translator.js"
+import { generateLlmTags } from "./tagger.js"
 import { computeAssetPriceCents, computeQualityScore, type Complexity } from "./pricing.js"
 import type { Asset } from "./types.js"
 
@@ -92,9 +93,50 @@ async function processVariant(variantId: string, assetId: string, targetLanguage
       .update({ status: "published", quality_score: qualityScore, price_cents: priceCents })
       .eq("id", asset.id)
       .throwOnError()
+
+    // §4.5 / §13: generate llm_v1 structured tags. Non-fatal — a tagging
+    // failure must not roll back the publication or block other variants.
+    await generateAndSaveLlmTags(asset as Asset).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error(`LLM tagging failed for asset ${asset.id}: ${msg}`)
+    })
   }
 
   console.log(`Processed ${variantId}: ${testResult.status}`)
+}
+
+async function generateAndSaveLlmTags(asset: Asset) {
+  const tags = await generateLlmTags(asset)
+
+  // Insert as the next version so it supersedes the developer's v1 record in
+  // the marketplace_search view (which picks max(version)).
+  const { data: existing } = await supabase
+    .from("asset_tags")
+    .select("version")
+    .eq("asset_id", asset.id)
+    .order("version", { ascending: false })
+    .limit(1)
+    .single()
+
+  const nextVersion = existing ? existing.version + 1 : 1
+
+  await supabase
+    .from("asset_tags")
+    .insert({
+      asset_id: asset.id,
+      version: nextVersion,
+      source: "llm_v1",
+      genre: tags.genre,
+      purpose: tags.purpose,
+      actions: tags.actions,
+      keywords: tags.keywords,
+      compatible_engines: tags.compatible_engines,
+      complexity: tags.complexity,
+      confidence_score: tags.confidence_score,
+    })
+    .throwOnError()
+
+  console.log(`LLM tags written for asset ${asset.id} (v${nextVersion}, confidence ${tags.confidence_score})`)
 }
 
 function sleep(ms: number) {
