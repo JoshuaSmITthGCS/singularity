@@ -13,16 +13,16 @@ import {
 import { buttonVariants } from "@/components/ui/button"
 
 const steps: Array<[LucideIcon, string, string]> = [
-  [GitBranch, "Publish", "Creators submit TypeScript, JavaScript, or Java assets with tests."],
-  [Search, "Search", "Clients search by purpose, tags, and verified language compatibility."],
-  [Languages, "Adapt", "The worker preserves behavior and checks the selected target."],
-  [BadgeCheck, "Ship", "Passing procurements deliver as a download or GitHub PR."],
+  [GitBranch, "Publish", "Publish once — TypeScript, JavaScript, Java, C#, or C++ — with the tests that prove it works."],
+  [Search, "Search", "Buyers search by genre, purpose, and engine, filtered to verified languages."],
+  [Languages, "Adapt", "Claude translates code and tests, converting units, physics, and engine APIs on the way."],
+  [BadgeCheck, "Ship", "Every variant runs its tests in a sandbox first — then delivers as a GitHub PR or download."],
 ]
 
 const trustSignals: Array<[LucideIcon, string, string]> = [
-  [ShieldCheck, "Stage 1", "Source verification before listing"],
-  [Gamepad2, "Beachhead", "Indie scripting and game teams first"],
-  [Coins, "Creator split", "70 percent creator share"],
+  [ShieldCheck, "Verified", "Tests pass in the target language before listing"],
+  [Gamepad2, "Game-dev native", "Unity, Unreal, Godot, libGDX, Phaser"],
+  [Coins, "Creator split", "70 percent of every sale"],
 ]
 
 export default function Home() {
@@ -37,7 +37,8 @@ export default function Home() {
             </div>
             {[
               ["typescript", "passed", "31/31"],
-              ["javascript", "testing", "running"],
+              ["csharp", "passed", "28/28"],
+              ["cpp", "testing", "running"],
               ["java", "queued", "waiting"],
             ].map(([language, status, count]) => (
               <div key={language} className="grid grid-cols-[120px_1fr_80px] items-center gap-3 border-b border-white/10 py-3 text-sm last:border-b-0">
@@ -63,13 +64,13 @@ export default function Home() {
         <div className="relative mx-auto flex min-h-[calc(100vh-10rem)] max-w-6xl items-center px-4 py-16">
           <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase text-[#e6b76a]">
-              Trusted code marketplace for indie scripting
+              AI-verified code marketplace for game developers
             </p>
             <h1 className="mt-4 text-5xl font-semibold tracking-normal md:text-7xl">
               Singularity
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-white/75">
-              Turn proven scripts into reusable infrastructure. Creators publish once, clients search by need, and the platform adapts verified assets across TypeScript, JavaScript, and Java.
+              Publish a game system once. Singularity translates it across TypeScript, JavaScript, Java, C#, and C++ — engine-aware, physics-aware — and only lists a language after its tests pass in a sandbox.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/marketplace" prefetch={false} className={buttonVariants({ size: "lg" })}>

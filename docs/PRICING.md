@@ -1,13 +1,20 @@
 # Pricing & Unit Economics
 
-The money model in one page: what buyers pay, what verification costs, and the
-four levers that keep the platform profitable at low operational cost. Change
-any parameter here **and** in the code mirrors (`src/lib/pricing.ts`,
-`worker/src/pricing.ts`, `worker/src/cost.ts`) in the same PR.
+The money model in one page: what buyers pay, what delivery actually costs,
+and the margin targets the parameters are tuned to. Change any parameter here
+**and** in the code mirrors (`src/lib/pricing.ts`, `worker/src/pricing.ts`,
+`worker/src/cost.ts`) in the same PR.
+
+**Margin policy (SaaS benchmarks):** target **75–85% gross margin** on
+platform revenue (direct costs: LLM verification, payment processing,
+hosting). Below 70% means hosting inefficiency or underpricing — fix the
+parameters, don't absorb it. Long-run **net margin target 15–25%** after
+S&M/R&D, evaluated with the Rule of 40 (growth % + net margin % ≥ 40) once
+there is revenue to measure.
 
 ---
 
-## 1. Price formula (v2)
+## 1. Price formula (v2) — value-based, not cost-plus
 
 ```
 price = max($4.00, $4.00 × complexity_multiplier + quality_score × $1.00)
@@ -21,41 +28,108 @@ price = max($4.00, $4.00 × complexity_multiplier + quality_score × $1.00)
 | Floor | **$4.00** | `PRICE_FLOOR_CENTS = 400` |
 
 Resulting range: **$4 (low, unverified) → $25 (high, perfect quality)**.
-Comparables: Unity Asset Store gameplay scripts sell for $5–$40; a variant here
-additionally carries a machine-verified test run in the buyer's language, so
-the range is conservative, not aggressive.
 
-Why v1 ($0.50 base, $0.20/point) had to go: its ceiling was $3.50/asset, so the
-platform's 30% take capped at ~$1.05 per sale — less than the LLM cost of
-verifying most assets even once. Revenue per sale is now ~7× v1 with no change
-to the formula's shape or the developer's 70% share.
+**Value anchor:** the buyer's alternative is porting a gameplay system to
+their language/engine by hand — realistically 2–8 developer-hours
+($100–$800 at $50–100/hr) plus the risk of physics/unit bugs. At $4–$25 with
+a machine-verified test run included, the buyer gets a **10–40× ROI**, which
+is the "obvious yes" zone: profitable for the platform, not outrageous for
+the buyer. Comps: Unity Asset Store gameplay scripts sell for $5–$40 with
+*no* verification. Raise willingness-to-pay later through tiers (T7.7), not
+by pushing the base curve.
 
-## 2. Revenue split (unchanged)
+## 2. Revenue split
 
 Developer **70%** / platform **25%** / referral reserve **5%**
-(`src/lib/constants.ts`). On the price range above the platform's gross take is
-**$1.20–$7.50 per sale**.
+(`src/lib/constants.ts`). Platform revenue per sale:
 
-## 3. Cost per verified asset (the opex side)
-
-Publishing verifies only what's needed; each verified translation costs one or
-two model calls plus Docker runs (compute on the worker host, ~free at MVP
-volume).
-
-Model rates (standard tier, per MTok): Sonnet 5 $3 in / $15 out; Opus 4.8
-$5 in / $25 out; cache reads ~0.1× input. For a typical asset
-(~15–25K input tokens with the cached rules preamble, ~5–10K output):
-
-| Event | Model path | Est. cost |
+| Sale price | Platform (25%) | + reserve if unspent (5%) |
 | --- | --- | --- |
-| Publish (source verify) | no LLM call | **~$0.00** |
-| One requested translation | Sonnet 5, passes | **~$0.10–$0.25** |
-| One escalated translation | Sonnet fails → Opus retry | **~$0.40–$0.90** |
-| Worst case, all 4 targets escalated | 8 calls | ~$2.50–$3.50 |
+| $4.00 floor | $1.00 | $0.20 |
+| $14.00 (medium, q4) | $3.50 | $0.70 |
+| $25.00 max | $6.25 | $1.25 |
 
-Every call's actual token usage and estimated cost are persisted on the
-variant (`model`, `tokens_input`, `tokens_output`, `translation_cost_cents`) —
-margin is measured, not assumed. Per-asset margin query:
+## 3. Token + cost estimates per translation (the COGS driver)
+
+Inputs are bounded: source and tests are capped at 80 KB each
+(`SOURCE_CODE_MAX_LENGTH`), and the static rules preamble (~800 tokens) is
+prompt-cached (writes 1.25×, reads 0.1×). Rates: Sonnet 5 $3/$15 per MTok,
+Opus 4.8 $5/$25.
+
+| Asset size (code+tests) | ~Input tokens | ~Output tokens | Sonnet | Opus | Escalated (S fail → O) |
+| --- | --- | --- | --- | --- | --- |
+| Small (~2 KB) | 1.5K | 3K | **$0.05** | $0.08 | $0.13 |
+| Typical (~10 KB) | 4K | 8K | **$0.13** | $0.22 | $0.35 |
+| Large (near cap) | 25K | 30K | **$0.53** | $0.88 | $1.41 |
+
+These are estimates; the worker records **actual** per-variant usage
+(`model`, `tokens_input`, `tokens_output`, `translation_cost_cents`) so the
+table can be re-baselined from production data. Publish itself costs ~$0.00
+in LLM terms (source-language verification is a Docker run only).
+
+## 4. Gross margin per sale
+
+Direct costs per sale: verification (amortized over that variant's sales) +
+payment processing + ~negligible hosting/delivery (a GitHub API call).
+
+Assuming processing ≈ 2.9% + $0.30 (⚠️ **assumption** — who bears Whop's
+processing fee is confirmed in MASTER_PLAN T1.2; scenarios below):
+
+**Scenario A — processing borne by the seller side (typical for
+connected-account platforms):**
+
+| Sale | Platform rev | Verification COGS | Gross margin |
+| --- | --- | --- | --- |
+| $14, Sonnet-verified, 1st sale | $3.50 | $0.13 | **96%** |
+| $14, escalated, 1st sale | $3.50 | $0.35 | **90%** |
+| $4 floor, Sonnet, 1st sale | $1.00 | $0.13 | **87%** |
+| Any repeat sale of a verified variant | 25% of price | ~$0 | **~100%** |
+
+**Scenario B — processing borne by the platform:**
+
+| Sale | Platform rev | Processing + verification | Gross margin |
+| --- | --- | --- | --- |
+| $14, Sonnet, 1st sale | $3.50 | $0.71 + $0.13 | **76%** |
+| $25, Sonnet, 1st sale | $6.25 | $1.03 + $0.13 | **81%** |
+| $4 floor, Sonnet, 1st sale | $1.00 | $0.42 + $0.13 | **45%** ⚠️ |
+
+**Decision rule:** Scenario A holds → parameters stay as-is (blended margin
+comfortably ≥ 80%). Scenario B holds → the $4 floor is below the 70% red
+line; raise `PRICE_FLOOR_CENTS` to **500–600** and/or compute the split on
+net-of-processing revenue. Do not ship real payments before T1.2 resolves
+which scenario is true.
+
+## 5. Fixed operational cost + break-even
+
+| Item | $/month |
+| --- | --- |
+| Supabase Pro | $25 |
+| Fly.io worker (shared-cpu-1x + volume) | $5–15 |
+| Netlify | $0–19 |
+| Domain | ~$1 |
+| Sentry / Resend / Plausible (free tiers at MVP volume) | $0 |
+| **Total** | **~$31–60** |
+
+At an average platform take of ~$3/sale, **10–20 sales/month covers all
+fixed infrastructure** — everything above that funds growth. There is no
+per-seat or manual-onboarding labor in the loop, which is what keeps the
+gross margin in the SaaS band.
+
+## 6. The four cost levers (all implemented)
+
+1. **Reprice (revenue ↑ ~7×).** Formula v2 above. v1's $3.50 ceiling put the
+   platform take below the cost of a single verification.
+2. **On-demand translation (cost ↓ ~75–100% per unsold asset).** Publish
+   queues only the source-language variant — zero LLM spend. Targets are
+   translated when a buyer requests them (`POST /api/assets/:id/variants`,
+   "Request <language>" on the asset page). An asset that never sells never
+   costs translation money. `SINGULARITY_TRANSLATION_MODE=eager` restores
+   translate-everything.
+3. **Model tiering (cost ↓ ~40% per translation).** Sonnet 5 first
+   (`ANTHROPIC_MODEL`); one Opus 4.8 retry on verification failure
+   (`ANTHROPIC_ESCALATION_MODEL`), noted in the adaptation log.
+4. **Cost tracking (margin is observable, not assumed).** Worker persists
+   per-variant token counts and cost (`worker/src/cost.ts`). Margin query:
 
 ```sql
 select a.id, a.title, a.price_cents,
@@ -67,44 +141,29 @@ group by a.id
 order by llm_spend_cents desc;
 ```
 
-## 4. The four levers (all implemented)
+## 7. Growth levers that respect the margin (planned, not built)
 
-1. **Reprice (revenue ↑ ~7×).** Formula v2 above.
-2. **On-demand translation (cost ↓ ~75–100% per unsold asset).** Publish
-   queues only the source-language variant — a Docker test run, zero LLM
-   spend. Target languages are translated only when a buyer requests them
-   (`POST /api/assets/:id/variants`, "Request <language>" on the asset page).
-   An asset that never sells never costs translation money. Set
-   `SINGULARITY_TRANSLATION_MODE=eager` to restore translate-everything.
-3. **Model tiering (cost ↓ ~40% per translation).** Translation defaults to
-   **Sonnet 5** (`ANTHROPIC_MODEL`); if the translation fails verification the
-   worker retries once with **Opus 4.8** (`ANTHROPIC_ESCALATION_MODEL`) and
-   notes the escalation in the adaptation log. The prompt-cached rules
-   preamble cuts repeat input cost a further ~10×. Source-language variants
-   never call a model.
-4. **Cost tracking (margin is observable).** Worker writes per-variant token
-   counts and cost estimates (`worker/src/cost.ts`); rates live in one table
-   and unknown models fall back to the most expensive rate so cost is never
-   under-reported.
+- **Usage-based by construction:** platform revenue is a % of every
+  transaction, so revenue scales with customer success at ~zero marginal
+  cost — repeat sales of a verified variant are ~100% margin.
+- **T7.7 Publisher Pro tier (tiered packaging):** subscription for serious
+  sellers (~$19/mo): eager translation to all five languages at publish,
+  priority queue, sales analytics, early access to new engines. Captures the
+  high-willingness-to-pay segment without raising prices on buyers.
+- **T7.4 referrals:** the 5% reserve is already carved out of every sale —
+  spending it costs no new margin.
 
-## 5. Break-even math
+## 8. Guardrails still required before real money
 
-Platform gross per sale is $1.20–$7.50. A Sonnet-verified translation costs
-$0.10–$0.25 — **the first sale of a variant covers its own verification with
-margin**, and every subsequent sale of that variant is ~pure gross margin
-(delivery is a GitHub API call). Even a fully-escalated translation (~$0.90)
-is covered by one sale at any tier. The remaining loss vector is paying for
-translations nobody buys — closed by lever 2 — and hostile publish loops —
-closed by rate limiting (MASTER_PLAN T1.5, still required before launch).
-
-## 6. Guardrails still required before real money
-
+- **T1.2** — confirm Whop fee mechanics (decides Scenario A vs B above).
 - **T1.5 rate limiting** — publish triggers Docker runs and variant requests
   trigger LLM calls; both need per-user budgets.
-- Consider a per-asset cap on escalation retries per requester (the requeue
-  path allows repeated failed→queued cycles; each costs an escalated call).
+- Failed-variant requeues carry a 6h cooldown for non-developers (developers
+  retry freely); revisit if escalated-retry spend shows up in the margin
+  query.
 
 ---
 
-*Updated 2026-07-06 alongside formula v2, on-demand translation, model
+*Updated 2026-07-06: SaaS margin framework (75–85% GM target), token/COGS
+estimates, break-even, alongside formula v2, on-demand translation, model
 tiering, and cost tracking.*

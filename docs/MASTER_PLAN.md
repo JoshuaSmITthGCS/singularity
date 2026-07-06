@@ -171,6 +171,11 @@ for the gates — this section only lists what code must change.
      signature scheme is timestamped (Stripe-style `t=...,v1=...`), add a
      ±5-minute replay window and constant-time comparison (the current
      verifier already uses `timingSafeEqual`; keep that).
+  2b. **Confirm who bears Whop's payment-processing fee** (platform vs the
+     developer's connected company). This decides Scenario A vs B in
+     `docs/PRICING.md` §4 — if the platform bears it, raise
+     `PRICE_FLOOR_CENTS` to 500–600 or compute the split net of processing,
+     otherwise the $4-floor sale drops below the 70% gross-margin red line.
   3. Add unit tests with fixture payloads for the confirmed signature scheme
      (`src/lib/whop/webhook.test.ts`).
 - **Accept:** zero `VERIFY` markers remain in `src/lib/whop/`; webhook tests
@@ -517,7 +522,14 @@ acceptance criteria.
 > source language; targets translate when requested via
 > `POST /api/assets/[id]/variants`, toggle `SINGULARITY_TRANSLATION_MODE`).
 > Full economics: `docs/PRICING.md`. Remaining in M7: T7.4 referrals, T7.5
-> analytics.
+> analytics, T7.7 Publisher Pro tier.
+>
+> **Margin policy:** parameters are tuned to a **75–85% gross margin** on
+> platform revenue (SaaS benchmark; < 70% = underpriced or inefficient) with
+> a long-run **15–25% net margin** target evaluated via the Rule of 40. The
+> math, token estimates, and the fee-bearer decision rule live in
+> `docs/PRICING.md` §§3–5 — re-baseline from the per-variant cost columns
+> after the first weeks of real traffic.
 
 The v1 formula capped prices at **$3.50** (`0.50 × 5.0 + 5 × 0.20`) and the
 platform kept 25% + 5% ≈ **$1.05 max per sale**, while verifying one asset
@@ -575,6 +587,21 @@ volumes that was **negative margin until an asset sold several copies**.
 - **Accept:** referred demo purchase credits the referrer; split still sums
   to 100% (extend pricing tests).
 
+### T7.7 Publisher Pro tier (tiered packaging)
+- **Why:** the marketplace take is usage-based pricing (scales with buyer
+  success); a subscription tier captures the high-willingness-to-pay seller
+  segment without raising buyer prices.
+- **Files:** new migration (`profiles.pro_until timestamptz`), Whop
+  subscription product, publish route (eager mode for Pro), worker claim
+  ordering (Pro assets first), dashboard analytics gating
+- **Steps:** ~$19/mo via a Whop subscription plan on the platform company:
+  eager translation to all five languages at publish, priority verification
+  queue, sales analytics (T5.4 becomes the free teaser, Pro gets full
+  history). Build only after T5.4 and T7.5 exist — the tier needs something
+  to sell.
+- **Accept:** a Pro publisher's asset queues all languages at publish and
+  claims ahead of free assets; subscription state syncs from a Whop webhook.
+
 ### T7.5 Product analytics funnel
 - **Files:** `src/app/layout.tsx` + a tiny wrapper `src/lib/analytics.ts`
 - **Steps:** ⛔ **HUMAN GATE (5 min):** Josh picks Plausible (simple, no
@@ -606,7 +633,7 @@ file when it does.
 | ID | Milestone | Task | Gate | Est. |
 | --- | --- | --- | --- | --- |
 | T0.1 | M0 | Data room out of repo | ⛔ decision | 1 h |
-| T0.2 | M0 | Landing copy → 5 languages | — | 1 h |
+| T0.2 | M0 | Landing copy → 5 languages ✅ done | — | 1 h |
 | T0.3 | M0 | Doc supersession banner | — | 15 m |
 | T1.1 | M1 | Worker deploy artifacts | ⛔ host choice | 1 d |
 | T1.2 | M1 | Whop API verification | ⛔ doc excerpts | 1 d |
@@ -639,12 +666,164 @@ file when it does.
 | T7.2 | M7 | Model tiering ✅ done | — | ½ d |
 | T7.3 | M7 | Cost tracking ✅ done | — | 1 d |
 | T7.6 | M7 | On-demand translation ✅ done | — | 1 d |
+| T7.7 | M7 | Publisher Pro tier | — | 2 d |
 | T7.4 | M7 | Referral program | — | 1–2 d |
 | T7.5 | M7 | Analytics funnel | ⛔ 5 min | ½ d |
 
 **Total agent effort:** ~5–6 working weeks of implementation, parallelizable
 by milestone. **Total human effort:** roughly one afternoon of account
 creation + doc pasting (batched in M1) plus the T0.1 decision.
+
+---
+
+## Appendix A — Manual go-live checklist (everything done by hand)
+
+Every account, website, key, and string that must exist before the platform
+is functional with real money. This is human-only work — the agent can't
+create accounts for you. Do the steps **in order**; each produces values the
+next step consumes. Click-by-click detail for steps 1–6 is in
+`docs/PRODUCTION_SETUP.md`; this is the complete inventory.
+
+**Two rules:**
+- 🔴 **Secret** values go ONLY into env-var stores (Netlify UI / `fly
+  secrets`). Never paste them into chat, commits, or files in this repo. If
+  one leaks, rotate it.
+- 🟢 **Non-secret** identifiers (IDs, slugs, URLs) can be pasted to the agent
+  so it can wire config and docs.
+
+### Step 1 — Supabase (database + auth) · https://supabase.com/dashboard
+1. Create a project (pick a region near your users; save the DB password in
+   a password manager).
+2. **Settings → API**, collect:
+   - Project URL 🟢 → `NEXT_PUBLIC_SUPABASE_URL`
+   - Project ref 🟢 (the `abcdxyz` part of the URL)
+   - `anon public` key 🔴 → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `service_role` key 🔴 → `SUPABASE_SERVICE_ROLE_KEY`
+3. Push the schema from your machine:
+   ```bash
+   npx supabase login
+   npx supabase link --project-ref <PROJECT_REF>
+   npx supabase db push        # applies all 8 migrations
+   ```
+   Verify in **Database → Tables**: `assets`, `asset_variants` (with the
+   `translation_cost_cents` column), `asset_tags`, `client_env_configs`,
+   `procurements`, `payments`, `profiles`, plus the `marketplace_*` views.
+
+### Step 2 — GitHub OAuth App (user login) · https://github.com/settings/developers
+1. **New OAuth App**. Authorization callback URL (Supabase shows the exact
+   value on the provider page):
+   `https://<PROJECT_REF>.supabase.co/auth/v1/callback`
+2. Collect Client ID 🟢 and generate a Client Secret 🔴.
+3. In Supabase **Authentication → Providers → GitHub**: paste both, enable.
+   (These two values live in Supabase's dashboard, not in your env vars.)
+
+### Step 3 — GitHub App (repo reads + PR delivery) · https://github.com/settings/apps
+Separate from Step 2. **New GitHub App** with:
+- Homepage URL: your production URL
+- Webhook URL: `https://<YOUR_DOMAIN>/api/webhooks/github`
+- Webhook secret: generate a random string 🔴 → `GITHUB_APP_WEBHOOK_SECRET`
+- Repository permissions: **Contents: Read and write**, **Pull requests:
+  Read and write**, **Metadata: Read-only**
+- Installable by: **Any account**
+
+Collect after creation:
+- App ID 🟢 → `GITHUB_APP_ID`
+- App slug 🟢 → `GITHUB_APP_SLUG`
+- Client ID 🟢 → `GITHUB_APP_CLIENT_ID`
+- Generate Client Secret 🔴 → `GITHUB_APP_CLIENT_SECRET`
+- **Generate a private key** → downloads a `.pem` 🔴 →
+  `GITHUB_APP_PRIVATE_KEY` (paste the full PEM including the BEGIN/END
+  lines; `\n`-escaped is also handled)
+
+### Step 4 — Anthropic (translation) · https://console.anthropic.com/settings/keys
+1. Create an API key 🔴 → `ANTHROPIC_API_KEY` (worker host only).
+2. Model env vars are optional — defaults are already the cost-optimal
+   ladder: `ANTHROPIC_MODEL=claude-sonnet-5`,
+   `ANTHROPIC_ESCALATION_MODEL=claude-opus-4-8`. Set them only to override.
+3. Add a **spend limit** in Console → Billing (e.g. $25/mo to start) so a
+   bug can't run up a bill before T1.5 rate limiting ships.
+
+### Step 5 — Worker host (Fly.io recommended) · https://fly.io
+The worker needs Docker; Netlify cannot run it. After T1.1 lands the deploy
+artifacts (`worker/Dockerfile`, `fly.toml`, `worker/DEPLOY.md`):
+```bash
+fly launch          # from worker/, per DEPLOY.md
+fly secrets set NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \
+  ANTHROPIC_API_KEY=... WORKER_ID=worker-prod-1
+fly deploy
+```
+Until T1.1 is built, the interim option is any VM with Docker (Hetzner /
+DigitalOcean, ~$6/mo): clone the repo, `pnpm install`, build the 5 sandbox
+images (`pnpm run worker:build-images`), set the same env vars, run
+`pnpm worker` under systemd.
+
+### Step 6 — Whop (payments) · https://whop.com + https://dev.whop.com
+1. Create the **platform (parent) company**.
+2. From the developer/API settings collect:
+   - Company API key 🔴 → `WHOP_API_KEY`
+   - Webhook signing secret 🔴 → `WHOP_WEBHOOK_SECRET`
+   - Platform company id 🟢 (`biz_...`) → `WHOP_PLATFORM_COMPANY_ID`
+3. Register the webhook endpoint: `https://<YOUR_DOMAIN>/api/webhooks/whop`
+4. ⚠️ **Paste to the agent** (T1.2, before real money): the doc excerpts for
+   webhook signature verification, company/plan/checkout API shapes, **and
+   who bears the payment-processing fee** — the code carries VERIFY markers
+   until these are reconciled, and the fee answer decides the price floor
+   (`docs/PRICING.md` §4).
+
+### Step 7 — Netlify (frontend + API) · https://app.netlify.com
+1. **Add new site → Import from Git** → select this repo (build config comes
+   from `netlify.toml`).
+2. **Site settings → Environment variables** → set everything in the table
+   below marked *Netlify*.
+3. **Domain management** → attach your domain, follow the DNS steps, then
+   set `NEXT_PUBLIC_APP_URL` to the final `https://` URL.
+
+### Step 8 — Later milestones (5–10 min each, when the task ships)
+| Service | Website | Value → env var | Needed for |
+| --- | --- | --- | --- |
+| Sentry | https://sentry.io | DSN 🟢-ish → `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` | T3.1 error tracking |
+| Resend | https://resend.com | API key 🔴 → `RESEND_API_KEY` (+ verify your domain) | T5.3 email |
+| Plausible | https://plausible.io | site domain → `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | T7.5 analytics |
+| UptimeRobot | https://uptimerobot.com | (no env var — point it at `/api/health`) | T3.4 monitoring |
+
+### Consolidated env-var table
+
+| Env var | From step | Secret | Netlify | Worker |
+| --- | --- | --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | 1 | no | ✅ | ✅ |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 1 | 🔴 | ✅ | — |
+| `SUPABASE_SERVICE_ROLE_KEY` | 1 | 🔴 | ✅ | ✅ |
+| `GITHUB_APP_ID` | 3 | no | ✅ | — |
+| `GITHUB_APP_SLUG` | 3 | no | ✅ | — |
+| `GITHUB_APP_CLIENT_ID` | 3 | no | ✅ | — |
+| `GITHUB_APP_CLIENT_SECRET` | 3 | 🔴 | ✅ | — |
+| `GITHUB_APP_PRIVATE_KEY` | 3 | 🔴 | ✅ | — |
+| `GITHUB_APP_WEBHOOK_SECRET` | 3 | 🔴 | ✅ | — |
+| `ANTHROPIC_API_KEY` | 4 | 🔴 | — | ✅ |
+| `ANTHROPIC_MODEL` (opt; default `claude-sonnet-5`) | 4 | no | — | ✅ |
+| `ANTHROPIC_ESCALATION_MODEL` (opt; default `claude-opus-4-8`) | 4 | no | — | ✅ |
+| `WORKER_ID` / `WORKER_POLL_INTERVAL_MS` / `WORKER_CLAIM_TIMEOUT_MINUTES` (opt) | 5 | no | — | ✅ |
+| `WHOP_API_KEY` | 6 | 🔴 | ✅ | — |
+| `WHOP_WEBHOOK_SECRET` | 6 | 🔴 | ✅ | — |
+| `WHOP_PLATFORM_COMPANY_ID` | 6 | no | ✅ | — |
+| `NEXT_PUBLIC_APP_URL` | 7 | no | ✅ | — |
+| `NEXT_PUBLIC_REAL_BACKEND=true` | 7 | no | ✅ | — |
+| `SINGULARITY_REAL_BACKEND=true` | 7 | no | ✅ | — |
+| `SINGULARITY_TRANSLATION_MODE` (opt; default `on_demand`) | 7 | no | ✅ | — |
+
+### Final verification (after steps 1–7)
+1. `https://<DOMAIN>/api/health` → `{"status":"ok"}` and `/api/ready` →
+   `ready`.
+2. Sign in with GitHub; publish a small test asset; watch the worker verify
+   the source language and flip it to `published`.
+3. On the asset page, request a second language; confirm the worker
+   translates (Sonnet), tests, and the badge turns verified.
+4. From a second account: complete Whop **test-mode** checkout → webhook
+   fires → PR or download delivered → `payments` row shows the 70/25/5
+   split.
+5. Confirm `asset_variants.translation_cost_cents` is populated and sanity-
+   check it against `docs/PRICING.md` §3.
+6. Rotate any key that ever touched chat or a commit.
 
 ---
 
