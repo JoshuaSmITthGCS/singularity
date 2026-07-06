@@ -54,10 +54,13 @@ of the TRD and `worker/src/translator.ts`).
 **Database & Auth** — Supabase (Postgres + Auth + Row-Level Security). GitHub
 OAuth as the auth provider. Generated types in `src/types/database.ts`.
 
-**AI translation** — Anthropic Claude (`@anthropic-ai/sdk`, model from
-`ANTHROPIC_MODEL`, default `claude-opus-4-8`) via the Messages API with Zod-typed
-structured output (`output_config.format`), adaptive thinking, and prompt caching
-on the static translation-rules preamble. Lives in the worker.
+**AI translation** — Anthropic Claude (`@anthropic-ai/sdk`) via the Messages API
+with Zod-typed structured output (`output_config.format`), adaptive thinking, and
+prompt caching on the static translation-rules preamble. Cost-tiered: translation
+runs on `ANTHROPIC_MODEL` (default `claude-sonnet-5`); a translation that fails
+verification is retried once on `ANTHROPIC_ESCALATION_MODEL` (default
+`claude-opus-4-8`). Per-variant token usage and estimated cost are persisted
+(`worker/src/cost.ts`). Lives in the worker. See `docs/PRICING.md`.
 
 **Test execution** — Docker sandboxes, one image per language
 (`worker/docker/*.Dockerfile`), driven by `dockerode`. Two-stage: install
@@ -175,19 +178,29 @@ singularity/
      computed by the formula (§8); the form shows the estimate live.
 2. `POST /api/assets` validates with `createAssetSchema`, computes the initial
    price (`computeAssetPriceCents`), hashes the source (`content_hash`), inserts
-   the `assets` row (`status: 'verifying'`), writes a v1 `asset_tags` record
-   (`source: 'developer'`), and inserts one `asset_variants` row per language
-   (`status: 'queued'`).
+   the `assets` row (`status: 'verifying'`), and writes a v1 `asset_tags` record
+   (`source: 'developer'`).
+3. **Translation is on-demand by default** (`getTranslationMode()` in
+   `src/lib/constants.ts`): publish queues only the **source-language** variant
+   (a Docker test run, zero LLM spend). Other languages are queued when a
+   signed-in user requests them via `POST /api/assets/[id]/variants`
+   (`RequestVariantButton` on the asset detail page; failed variants requeue
+   with a 6h cooldown for non-developers). Set
+   `SINGULARITY_TRANSLATION_MODE=eager` to queue all languages at publish.
 
 ### 6.2 Translate & verify (worker)
 `worker/src/index.ts` loops:
 1. `claimNextVariant()` claims a queued variant with `SKIP LOCKED`.
 2. Loads the parent asset.
 3. If the variant language **==** the source language, reuse code/tests as-is;
-   otherwise call `translateVariant()` (Claude) to translate code + tests and
-   produce an `adaptation_log`, PR notes, confidence, and dependency manifests.
+   otherwise call `translateVariant()` (Claude, `ANTHROPIC_MODEL`, default
+   Sonnet) to translate code + tests and produce an `adaptation_log`, PR notes,
+   confidence, and dependency manifests.
 4. `runTests()` executes in the language's Docker image (install stage →
-   network-off test stage). Result → variant `status: passed | failed` + counts.
+   network-off test stage). A failed **cross-language** translation is retried
+   once on `ANTHROPIC_ESCALATION_MODEL` (default Opus) before the variant is
+   marked failed. Result → variant `status: passed | failed` + counts + token
+   usage / `translation_cost_cents` (`worker/src/cost.ts`).
 5. When the **source-language** variant passes and the asset is still
    `verifying`, the worker computes a `quality_score` from the test results,
    **reprices** the asset via the formula, and flips it to `published`.
@@ -223,6 +236,7 @@ Migrations in `supabase/migrations/` (apply in filename order):
 | `20260526… / 20260527…` | language matrix → adds Java, then C#/C++ |
 | `20260529… (x2)` | Whop payments + connected accounts |
 | `20260530000000_trd_alignment` | `asset_tags` (versioned structured tags), `client_env_configs`, `marketplace_search` view; `singularity_uid`/`onchain_address` on profiles; `content_hash`/`blockchain_uid`/`quality_score`/`complexity` on assets |
+| `20260706000000_variant_cost_tracking` | `model`/`tokens_input`/`tokens_output`/`translation_cost_cents` on `asset_variants` (worker-written; excluded from public views) |
 
 **Key tables:**
 - `profiles` — user + GitHub metadata, earnings, `singularity_uid` (immutable
@@ -249,13 +263,18 @@ always through the `marketplace_*` views, which omit code.
 
 - **Price is computed, never user-set** (`src/lib/pricing.ts`, mirrored in
   `worker/src/pricing.ts`):
-  `price = BASE × complexity_multiplier + quality_score × quality_bonus`.
-  Base `$0.50`; multipliers low/med/high = `1.0 / 2.5 / 5.0`; quality bonus
-  `$0.20`/point on a 0–5 scale. Initial price uses complexity only; the worker
-  adds the quality bonus after verification.
+  `price = max(floor, BASE × complexity_multiplier + quality_score × quality_bonus)`.
+  Formula v2: base `$4.00`; multipliers low/med/high = `1.0 / 2.5 / 5.0`;
+  quality bonus `$1.00`/point on a 0–5 scale; floor `$4.00` (range $4–$25).
+  Initial price uses complexity only; the worker adds the quality bonus after
+  verification. Rationale, comps, and margin math: **`docs/PRICING.md`**.
 - **Revenue split (`src/lib/constants.ts`):** developer **70%**, platform
   **25%**, referral reserve **5%** (`DEVELOPER_SHARE_RATE` etc.). Applied in
   `lib/procurements` and `computeRevenueSplitCents`.
+- **Cost side:** on-demand translation (§6.1), Sonnet-first model tiering
+  (§6.2), and per-variant cost tracking
+  (`20260706000000_variant_cost_tracking` migration) keep verification spend
+  below the platform's take on a single sale.
 
 ---
 

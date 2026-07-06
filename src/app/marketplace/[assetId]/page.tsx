@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import { BadgeCheck, GitPullRequest, ShieldCheck } from "lucide-react"
 import { LanguageBadge } from "@/components/LanguageBadge"
 import { PurchaseForm } from "@/components/PurchaseForm"
+import { RequestVariantButton } from "@/components/RequestVariantButton"
 import { Badge } from "@/components/ui/badge"
 import { LANGUAGES, LANGUAGE_LABEL } from "@/lib/constants"
 import { getMarketplaceAsset } from "@/lib/marketplace/queries"
@@ -23,6 +24,7 @@ export default async function AssetDetailPage({
   const variantsByLanguage = new Map<Language, (typeof asset.variants)[number]>()
   asset.variants.forEach((variant) => variantsByLanguage.set(variant.target_language, variant))
   const passedTargets = asset.variants.filter((variant) => variant.status === "passed").length
+  const missingLanguages = LANGUAGES.filter((language) => !variantsByLanguage.has(language))
 
   return (
     <main className="mx-auto grid max-w-6xl gap-8 px-4 py-10 lg:grid-cols-[1fr_360px]">
@@ -66,6 +68,21 @@ export default async function AssetDetailPage({
             />
           ))}
         </div>
+
+        {missingLanguages.length > 0 ? (
+          <div className="space-y-2 rounded-lg border border-border bg-panel p-4">
+            <p className="text-sm font-medium">Need another language?</p>
+            <p className="text-sm text-muted-foreground">
+              Translations run on demand. Request a language and the worker will adapt, test, and
+              verify it before it can be purchased.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {missingLanguages.map((language) => (
+                <RequestVariantButton key={language} assetId={asset.id} language={language} />
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">Verification brief</h2>

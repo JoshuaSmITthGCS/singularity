@@ -34,6 +34,18 @@ export const LANGUAGE_ENGINE_TAGS: Record<Language, string[]> = {
   cpp: ["Unreal Engine", "Custom", "C++", "Native"],
 }
 
+// Translation mode governs when cross-language variants are produced.
+// 'on_demand' (default): publish verifies only the source language — zero LLM
+// spend — and target languages are translated when a buyer requests them.
+// 'eager': publish queues all languages up front (the original MVP behavior).
+// Server-only: reads a non-NEXT_PUBLIC env var, so client bundles always see
+// the default.
+export type TranslationMode = "on_demand" | "eager"
+
+export function getTranslationMode(): TranslationMode {
+  return process.env.SINGULARITY_TRANSLATION_MODE === "eager" ? "eager" : "on_demand"
+}
+
 // Price is computed from the unit-economics formula (see src/lib/pricing.ts),
 // not set by developers, so there is no manual min/max range to enforce.
 export const DEVELOPER_SHARE_RATE = 0.7

@@ -29,6 +29,14 @@ export type TranslationDependencies = {
   cmake?: string
 }
 
+export type TranslationUsage = {
+  model: string
+  input_tokens: number
+  output_tokens: number
+  cache_read_input_tokens: number
+  cache_creation_input_tokens: number
+}
+
 export type TranslationResult = {
   translated_code: string
   translated_tests: string
@@ -36,6 +44,8 @@ export type TranslationResult = {
   notes_for_pr: string
   confidence: Confidence
   dependencies?: TranslationDependencies
+  // Absent for source-language reuse (no LLM call).
+  usage?: TranslationUsage
 }
 
 export type TestResult = {

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto"
 import { dataResponse, errorResponse } from "@/lib/api"
-import { LANGUAGES } from "@/lib/constants"
+import { LANGUAGES, getTranslationMode } from "@/lib/constants"
 import { demoAssets } from "@/lib/demo-data"
 import { isDemoMode } from "@/lib/demo-mode"
 import { computeAssetPriceCents } from "@/lib/pricing"
@@ -105,8 +105,15 @@ export async function POST(request: Request) {
     })
   }
 
+  // Unit economics: in on_demand mode only the source language is verified at
+  // publish (Docker run, no LLM call). Cross-language variants are created by
+  // POST /api/assets/[id]/variants when a buyer asks for them, so translation
+  // spend is incurred only where there is demand.
+  const publishLanguages =
+    getTranslationMode() === "eager" ? LANGUAGES : [input.source_language]
+
   const { error: variantsError } = await supabase.from("asset_variants").insert(
-    LANGUAGES.map((language) => ({
+    publishLanguages.map((language) => ({
       asset_id: asset.id,
       target_language: language,
       status: "queued",

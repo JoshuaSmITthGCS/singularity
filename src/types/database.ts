@@ -122,6 +122,11 @@ export type AssetVariant = {
   tests_failed: number | null
   test_output: string | null
   status: VariantStatus
+  // Cost tracking (worker-written): model + token spend behind this variant.
+  model: string | null
+  tokens_input: number | null
+  tokens_output: number | null
+  translation_cost_cents: number | null
   worker_claimed_by: string | null
   worker_claimed_at: string | null
   started_at: string | null

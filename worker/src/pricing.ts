@@ -1,18 +1,20 @@
 import type { TestResult } from "./types.js"
 
-// Unit Economics Pricing Formula v1 (TRD §7.4). Mirrors src/lib/pricing.ts so
-// the worker can reprice an asset once its quality score is known.
+// Unit Economics Pricing Formula v2 (TRD §7.4, revised — see docs/PRICING.md).
+// Mirrors src/lib/pricing.ts so the worker can reprice an asset once its
+// quality score is known.
 
 export type Complexity = "low" | "medium" | "high"
 
-const BASE_PRICE_CENTS = 50
+const BASE_PRICE_CENTS = 400
 const COMPLEXITY_MULTIPLIER: Record<Complexity, number> = { low: 1.0, medium: 2.5, high: 5.0 }
-const QUALITY_BONUS_PER_POINT_CENTS = 20
+const QUALITY_BONUS_PER_POINT_CENTS = 100
+const PRICE_FLOOR_CENTS = 400
 
 export function computeAssetPriceCents(input: { complexity: Complexity; qualityScore: number }): number {
   const complexityComponent = BASE_PRICE_CENTS * COMPLEXITY_MULTIPLIER[input.complexity]
   const qualityBonus = clampScore(input.qualityScore) * QUALITY_BONUS_PER_POINT_CENTS
-  return Math.round(complexityComponent + qualityBonus)
+  return Math.max(PRICE_FLOOR_CENTS, Math.round(complexityComponent + qualityBonus))
 }
 
 // Map verification results to a 0–5 quality score. Pass rate is the dominant

@@ -512,11 +512,17 @@ acceptance criteria.
 
 ## M7 — Profitability engine (1 week; pull T7.1 before launch)
 
-The current formula caps prices at **$3.50** (`0.50 × 5.0 + 5 × 0.20`) and the
-platform keeps 25% + 5% ≈ **$1.05 max per sale**, while verifying one asset
-costs 4 Claude Opus translation calls + 5 Docker runs. At plausible token
-volumes that is **negative margin until an asset sells several copies**. Fix
-the model before marketing spend, not after.
+> **Status 2026-07-06:** T7.1, T7.2, and T7.3 are ✅ **implemented**, plus an
+> unplanned lever — **on-demand translation** (publish verifies only the
+> source language; targets translate when requested via
+> `POST /api/assets/[id]/variants`, toggle `SINGULARITY_TRANSLATION_MODE`).
+> Full economics: `docs/PRICING.md`. Remaining in M7: T7.4 referrals, T7.5
+> analytics.
+
+The v1 formula capped prices at **$3.50** (`0.50 × 5.0 + 5 × 0.20`) and the
+platform kept 25% + 5% ≈ **$1.05 max per sale**, while verifying one asset
+cost 4 Claude Opus translation calls + 5 Docker runs. At plausible token
+volumes that was **negative margin until an asset sold several copies**.
 
 ### T7.1 Reprice: raise the curve, add a floor, keep the formula
 - **Files:** `src/lib/pricing.ts`, `worker/src/pricing.ts` (keep mirrored),
@@ -629,9 +635,10 @@ file when it does.
 | T6.2 | M6 | Loading/empty/error states | — | 1 d |
 | T6.3 | M6 | Accessibility pass | — | 1 d |
 | T6.4 | M6 | Voice + microcopy sweep | — | ½ d |
-| T7.1 | M7 | Repricing + floor | — | ½ d |
-| T7.2 | M7 | Model tiering | — | ½ d |
-| T7.3 | M7 | Cost tracking | — | 1 d |
+| T7.1 | M7 | Repricing + floor ✅ done | — | ½ d |
+| T7.2 | M7 | Model tiering ✅ done | — | ½ d |
+| T7.3 | M7 | Cost tracking ✅ done | — | 1 d |
+| T7.6 | M7 | On-demand translation ✅ done | — | 1 d |
 | T7.4 | M7 | Referral program | — | 1–2 d |
 | T7.5 | M7 | Analytics funnel | ⛔ 5 min | ½ d |
 
