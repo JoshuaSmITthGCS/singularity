@@ -67,27 +67,24 @@ SUPABASE_SERVICE_ROLE_KEY       🔴
 
 ---
 
-## A2. The translation worker host  ⚠️ THE HARD BLOCKER
+## A2. The translation worker host — ✅ DECIDED: plain VM (Hetzner CX22)
 
 The worker is a long‑running Node process that calls Docker to run the 5 language
 sandbox images. **Netlify cannot run it** (serverless). It needs a host with Docker.
 
-**Decision required from you — pick one:** 🟢
-- **Fly.io** (recommended: cheap, Docker‑native, persistent machine) — https://fly.io
-- **Railway** — https://railway.app
-- A plain **VM** you control (EC2 / DigitalOcean droplet / Hetzner) with Docker installed.
+**Decided:** a plain VM (Hetzner CX22, ~$5/mo — DigitalOcean's 2vCPU/2GB tier
+as the fallback), not Fly.io/Railway — the worker launches sibling sandbox
+containers via the host's Docker socket, which is simplest on a box where
+Docker is just Docker. **The full runbook is `worker/DEPLOY.md`** — this
+section is now just a pointer to it, not the decision point.
 
-Once you tell Claude which host, Claude will create the missing deploy artifacts
-(a `worker/Dockerfile` that builds the worker **and** has the Docker images
-available, plus the host config + a restart/supervisor setup). **This file does
-not exist yet — Claude writes it after you choose.**
-
-**What you'll need on that host (Claude will wire it, you provide the values):**
+**What you'll need on that host** (see `worker/.env.example`, all wired):
 ```
 NEXT_PUBLIC_SUPABASE_URL     (same as A1)
 SUPABASE_SERVICE_ROLE_KEY    (same as A1)   🔴
-ANTHROPIC_API_KEY            (from A's Anthropic step below)   🔴
-ANTHROPIC_MODEL=claude-opus-4-8   (optional)
+ANTHROPIC_API_KEY            (from below)   🔴
+ANTHROPIC_MODEL=claude-sonnet-5              (optional — already the default)
+ANTHROPIC_ESCALATION_MODEL=claude-opus-4-8   (optional — already the default)
 WORKER_ID=worker-prod-1
 WORKER_POLL_INTERVAL_MS=5000
 WORKER_CLAIM_TIMEOUT_MINUTES=10
@@ -96,8 +93,7 @@ WORKER_CLAIM_TIMEOUT_MINUTES=10
 **Anthropic key** — **Where to go:** https://console.anthropic.com/settings/keys →
 **Create Key**. → 🔴 ENV ONLY. (And rotate the key that was shared in chat earlier.)
 
-**🟢 PASTE TO CLAUDE:** which worker host you chose (Fly / Railway / VM), and your
-production domain if you have it.
+**🟢 PASTE TO CLAUDE:** your production domain if you have it.
 
 ---
 

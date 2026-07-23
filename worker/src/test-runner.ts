@@ -1,8 +1,8 @@
 import fs from "node:fs/promises"
-import os from "node:os"
 import path from "node:path"
 import { Writable } from "node:stream"
 import Docker from "dockerode"
+import { workerConfig } from "./config.js"
 import { writeJobFiles } from "./deps.js"
 import type { Language, TestResult, TranslationDependencies } from "./types.js"
 
@@ -27,7 +27,7 @@ export async function runTests({
   tests: string
   dependencies?: TranslationDependencies
 }): Promise<TestResult> {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "singularity-job-"))
+  const root = await fs.mkdtemp(path.join(workerConfig.jobTmpDir, "singularity-job-"))
   const workspace = path.join(root, "workspace")
   const reports = path.join(root, "reports")
 

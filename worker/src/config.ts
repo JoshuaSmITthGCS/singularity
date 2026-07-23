@@ -1,3 +1,4 @@
+import os from "node:os"
 import path from "node:path"
 import { config as loadEnv } from "dotenv"
 
@@ -17,6 +18,14 @@ export const workerConfig = {
   workerId: process.env.WORKER_ID || "worker-local-1",
   pollIntervalMs: Number(process.env.WORKER_POLL_INTERVAL_MS || 5000),
   claimTimeoutMinutes: Number(process.env.WORKER_CLAIM_TIMEOUT_MINUTES || 10),
+  // Base directory for per-job workspace/reports dirs (test-runner.ts). When
+  // the worker itself runs in a container talking to the *host's* Docker
+  // socket (Docker-outside-of-Docker — see worker/DEPLOY.md), a bind mount
+  // it requests is resolved by the host daemon against the host filesystem,
+  // not this container's. So this must be a path backed by a volume shared
+  // at the *same path* on both the worker container and the host — plain
+  // os.tmpdir() only works when the worker runs directly on the host.
+  jobTmpDir: process.env.WORKER_JOB_TMP_DIR || os.tmpdir(),
 }
 
 function requireEnv(name: string) {

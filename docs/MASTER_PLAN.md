@@ -128,30 +128,58 @@ code-side tasks immediately; park the ⛔ gates in a single tracking issue so
 Josh can batch them. `docs/PRODUCTION_SETUP.md` is the click-by-click runbook
 for the gates — this section only lists what code must change.
 
-### T1.1 Worker deploy artifacts (code now, host choice is a gate)
+### T1.1 Worker deploy artifacts ✅ done (plain VM, not Fly.io)
 - **Why:** the worker is a long-running Docker-controlling process; Netlify
   can't host it. Nothing can be verified in production until this exists.
-- **Files (new):** `worker/Dockerfile`, `worker/fly.toml` (or equivalent),
-  `worker/DEPLOY.md`
-- **Steps:**
-  1. ⛔ **HUMAN GATE:** Josh picks the host (recommend **Fly.io**: cheap,
-     Docker-native, persistent machines). Default to Fly if he has no
-     preference; the artifacts below assume it.
-  2. Write `worker/Dockerfile`: multi-stage Node 20 build (`pnpm install`,
-     `tsc`), final image runs `node dist/index.js`. The worker needs access
-     to a Docker daemon to launch the 5 sandbox images — on Fly use a
-     dedicated machine with the Docker socket via `fly.toml` `[experimental]`
-     or run dockerd-in-VM (document the chosen approach in `worker/DEPLOY.md`
-     with the exact `fly launch`/`fly deploy` commands).
-  3. Add a build step that builds the 5 sandbox images
-     (`worker/docker/*.Dockerfile`) on the host at deploy time
-     (`pnpm --dir worker build:images` equivalent as a release command).
-  4. Add process resilience: the loop in `worker/src/index.ts` already
-     catches per-job errors; add a top-level restart-on-crash (host-level
-     `restart = "always"` is fine, note it in DEPLOY.md).
-- **Accept:** `docker build -f worker/Dockerfile .` succeeds locally; DEPLOY.md
-  contains a copy-pasteable deploy sequence; env vars documented match
-  `worker/src/config.ts`.
+- **Files:** `worker/Dockerfile`, `worker/docker-compose.yml`,
+  `worker/.env.example`, `worker/.dockerignore`, `worker/DEPLOY.md`
+- **Decided:** a plain cheap VM (Hetzner CX22, ~$5/mo — DigitalOcean's 2vCPU/
+  2GB tier as the alternative), not Fly.io. The worker needs to launch
+  *sibling* sandbox containers via the host's Docker socket
+  (Docker-outside-of-Docker); that's simplest and most reliable on a box
+  where Docker is just Docker, not nested inside a Firecracker microVM —
+  Fly Machines don't offer a natural host-socket equivalent, and true
+  Docker-in-Docker inside a Fly Machine is meaningfully more setup
+  complexity for the same or higher cost.
+- **What shipped:**
+  1. `worker/Dockerfile` — 3-stage build (prod-deps-only / full-install-to-
+     compile / runtime). Deliberately plain `npm install` scoped to
+     `worker/package.json` alone rather than a pnpm-workspace-aware install:
+     the worker has zero `workspace:*` deps, and pnpm's symlinked,
+     content-store-backed `node_modules` don't survive a plain `COPY` into a
+     slim runtime stage without `pnpm deploy`, whose exact copy semantics
+     couldn't be verified here (no Docker daemon reachable in this
+     environment to trial-build against — verified as far as possible by
+     running `npm run build` directly, confirmed the compiled `dist/`
+     imports resolve and the process reaches its expected first failure
+     point, missing env vars, rather than a module error).
+  2. `worker/docker-compose.yml` + `.env.example` — mounts the host's
+     `/var/run/docker.sock` (DooD) and a **shared workspace directory at an
+     identical path on both sides** (`/var/singularity/tmp`). This second
+     mount is load-bearing and easy to get wrong silently: bind-mount paths
+     the worker passes to the host daemon are resolved against the *host*
+     filesystem, so a directory that only exists inside the worker's own
+     container resolves to empty/nonexistent on the host, and sandbox
+     containers would run against missing files with no obvious error.
+     `worker/src/config.ts` gained `WORKER_JOB_TMP_DIR` (defaults to
+     `os.tmpdir()` for non-containerized dev/local use) and
+     `worker/src/test-runner.ts` now builds its per-job temp dir from it.
+  3. `worker/DEPLOY.md` — full runbook: VM provisioning + hardening (SSH
+     keys only, ufw, unattended-upgrades), Docker install, building the 5
+     sandbox images once via raw `docker build` (no Node/pnpm needed on the
+     host at all), the shared-directory setup, `docker compose up -d
+     --build`, and the redeploy loop (`git pull` + rebuild).
+  4. Process resilience: `restart: always` in compose (survives crashes and
+     VM reboots).
+- **Trade-off documented in DEPLOY.md:** the worker container runs as root
+  (needed for practical `/var/run/docker.sock` access) — accepted because
+  the worker only runs trusted first-party code; untrusted LLM-translated
+  content only ever executes inside the separately-hardened sandbox
+  containers (T2.1).
+- **Not verified:** an actual `docker build`/`docker compose up` run — no
+  Docker daemon was reachable in this environment. Run step 6 of DEPLOY.md
+  on the real VM and confirm a published asset's source-language variant
+  actually flips to `passed`/`failed` before relying on this in production.
 
 ### T1.2 ⛔ Whop API verification (the money gate)
 - **Why:** `src/lib/whop/client.ts`, `src/lib/whop/webhook.ts`, and
@@ -661,7 +689,7 @@ file when it does.
 | T0.1 | M0 | Data room out of repo | ⛔ decision | 1 h |
 | T0.2 | M0 | Landing copy → 5 languages ✅ done | — | 1 h |
 | T0.3 | M0 | Doc supersession banner | — | 15 m |
-| T1.1 | M1 | Worker deploy artifacts | ⛔ host choice | 1 d |
+| T1.1 | M1 | Worker deploy artifacts ✅ done | — | 1 d |
 | T1.2 | M1 | Whop API verification | ⛔ doc excerpts | 1 d |
 | T1.3 | M1 | Webhook race/idempotency ✅ done | — | ½ d |
 | T1.4 | M1 | Ready probe + env validation | — | ½ d |
@@ -769,19 +797,25 @@ Collect after creation:
 3. Add a **spend limit** in Console → Billing (e.g. $25/mo to start) so a
    bug can't run up a bill before T1.5 rate limiting ships.
 
-### Step 5 — Worker host (Fly.io recommended) · https://fly.io
-The worker needs Docker; Netlify cannot run it. After T1.1 lands the deploy
-artifacts (`worker/Dockerfile`, `fly.toml`, `worker/DEPLOY.md`):
+### Step 5 — Worker host: Hetzner CX22 VM (~$5/mo) · https://www.hetzner.com/cloud
+The worker needs Docker; Netlify cannot run it. Decided against Fly.io: the
+worker launches sibling sandbox containers via the host's Docker socket
+(Docker-outside-of-Docker), which is simplest on a plain VM where Docker is
+just Docker, not nested inside Fly's Firecracker microVMs. Full runbook —
+provisioning, hardening, building the 5 sandbox images, the shared-workspace
+directory gotcha, and `docker compose up -d --build` — is in
+**`worker/DEPLOY.md`**. Short version:
 ```bash
-fly launch          # from worker/, per DEPLOY.md
-fly secrets set NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \
-  ANTHROPIC_API_KEY=... WORKER_ID=worker-prod-1
-fly deploy
+# on the VM, after installing Docker (see DEPLOY.md steps 1-3)
+git clone https://github.com/<YOUR_ORG>/singularity.git
+cd singularity/worker
+# build the 5 sandbox images (step 4 of DEPLOY.md), then:
+sudo mkdir -p /var/singularity/tmp && sudo chmod 777 /var/singularity/tmp
+cp .env.example .env   # fill in Supabase/Anthropic/WORKER_ID
+docker compose up -d --build
 ```
-Until T1.1 is built, the interim option is any VM with Docker (Hetzner /
-DigitalOcean, ~$6/mo): clone the repo, `pnpm install`, build the 5 sandbox
-images (`pnpm run worker:build-images`), set the same env vars, run
-`pnpm worker` under systemd.
+DigitalOcean's 2vCPU/2GB Basic Droplet (~$12/mo) is the fallback if Hetzner
+sign-up has friction.
 
 ### Step 6 — Whop (payments) · https://whop.com + https://dev.whop.com
 1. Create the **platform (parent) company**.
