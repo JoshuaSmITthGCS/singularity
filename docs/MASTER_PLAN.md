@@ -171,17 +171,16 @@ for the gates — this section only lists what code must change.
      signature scheme is timestamped (Stripe-style `t=...,v1=...`), add a
      ±5-minute replay window and constant-time comparison (the current
      verifier already uses `timingSafeEqual`; keep that).
-  2b. **Confirm who bears Whop's payment-processing fee** (platform vs the
-     developer's connected company). This decides Scenario A vs B in
-     `docs/PRICING.md` §4 — if the platform bears it, raise
-     `PRICE_FLOOR_CENTS` to 500–600 or compute the split net of processing,
-     otherwise the $4-floor sale drops below the 70% gross-margin red line.
+  2b. ✅ **Decided:** the platform absorbs Whop's payment-processing fee
+     (does not pass it to the developer's share). `PRICE_FLOOR_CENTS` is
+     raised to 600 ($6) accordingly; the real margin math lives in
+     `docs/PRICING.md` §4.
   3. Add unit tests with fixture payloads for the confirmed signature scheme
      (`src/lib/whop/webhook.test.ts`).
 - **Accept:** zero `VERIFY` markers remain in `src/lib/whop/`; webhook tests
   pass; a Whop test-mode checkout completes end-to-end (§B4 of the runbook).
 
-### T1.3 Webhook fulfillment race + idempotency guard
+### T1.3 Webhook fulfillment race + idempotency guard ✅ done
 - **Why:** `src/app/api/webhooks/whop/route.ts` checks
   `status === "delivered"` then fulfills — two concurrent retries of the same
   event can both pass the check and double-deliver (duplicate PRs, duplicate
@@ -203,6 +202,12 @@ for the gates — this section only lists what code must change.
      leaving `delivering` stuck; add a `GET` retry path in T3.3.
 - **Accept:** unit test simulating two concurrent webhook calls results in
   exactly one delivery; migration applies cleanly on `supabase db reset`.
+- **Status:** steps 1–2 done (atomic conditional-UPDATE claim in
+  `fulfillProcurement`; unique partial index on `whop_payment_id`). Step 3
+  deliberately **not** applied yet — flipping the failure branch to `paid`
+  without also shipping T3.3's retry button would silently turn a visible
+  "Failed" badge into an unexplained "Pending" one; the failure path stays
+  `status='failed'` until T3.3 ships alongside it.
 
 ### T1.4 Real `/api/ready` + startup env validation
 - **Why:** `src/lib/env-validation.ts` checks 2 of ~15 required vars;
@@ -223,7 +228,7 @@ for the gates — this section only lists what code must change.
 - **Accept:** with a var deleted locally, `/api/ready` 503s and names the
   integration (not the value); tests cover the schema.
 
-### T1.5 Rate limiting + request caps on all public routes
+### T1.5 Rate limiting + request caps on all public routes ✅ done
 - **Why:** there is **no rate limiting anywhere**. `/api/assets` accepts
   160 KB bodies and triggers 4 LLM translation jobs per call — an attacker
   can drain the Anthropic budget with a loop. This is both a security and a
@@ -245,6 +250,13 @@ for the gates — this section only lists what code must change.
      the user already has ≥ 3 assets in `verifying` (checked in the route).
 - **Accept:** unit tests for the limiter; hammering `/api/assets` in demo
   mode returns 429 after the budget; CI green.
+- **Status:** implemented as `src/lib/rate-limit.ts` (Postgres atomic
+  fixed-window counter via `increment_rate_limit()`, in-memory fallback in
+  demo mode) with the exact budgets above, wired into assets/procurements/
+  variants/search/whop-connect, plus the concurrent-verification cap. Not
+  covered: GitHub App connect routes (`/api/github/install`, `/repos`) —
+  lower cost risk (no LLM/Docker triggered), left for a follow-up pass if
+  abuse shows up there.
 
 ### T1.6 ⛔ Production environment bring-up (pure runbook execution)
 - **Steps:** Josh executes `docs/PRODUCTION_SETUP.md` §A1 (Supabase +
@@ -261,7 +273,7 @@ for the gates — this section only lists what code must change.
 
 ## M2 — Security hardening (3–4 days, no gates)
 
-### T2.1 Sandbox lockdown
+### T2.1 Sandbox lockdown ✅ done
 - **Why:** `worker/src/test-runner.ts` sets memory/CPU caps, non-root user,
   network-off test stage — good — but containers can still fork-bomb, gain
   file capabilities, and the install stage has open egress.
@@ -277,8 +289,16 @@ for the gates — this section only lists what code must change.
 - **Accept:** all 5 language images still pass a known-good asset locally
   (run the worker against the demo seed asset); a `while(true) fork` test
   case is killed by PidsLimit, not the host.
+- **Status:** implemented as documented (`PidsLimit: 256`, `CapDrop: ["ALL"]`,
+  `no-new-privileges`, `Ulimits`, `Tmpfs`), with one deviation: `fsize` is
+  256 MB rather than ~64 MB — Java/C++ builds can legitimately emit a single
+  artifact (debug symbols, an uber-jar) past 64 MB, and the guard is meant to
+  stop a deliberate multi-GB fill, not shave legitimate headroom. Verifying
+  all 5 images still pass a known-good asset requires a live Docker daemon,
+  which this environment doesn't have — do that check on the worker host
+  before relying on this in production.
 
-### T2.2 Security headers + hardened Next config
+### T2.2 Security headers + hardened Next config ✅ done (CSP enforced, not report-only)
 - **Files:** `next.config.ts`, `middleware.ts`
 - **Steps:** add headers (via `next.config.ts` `headers()`):
   `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
@@ -287,6 +307,12 @@ for the gates — this section only lists what code must change.
   Content-Security-Policy that allows self + Supabase + Whop checkout domains
   only (start in `report-only`, flip to enforce after a week clean).
 - **Accept:** `curl -sI` on any page shows the headers; app functions in dev.
+- **Status:** implemented in `next.config.ts` `headers()`. Enforced directly
+  (not report-only) since there's no live traffic yet to break silently — CSP
+  is scoped to `NODE_ENV === "production"` only, so Turbopack's dev-mode
+  `unsafe-eval` HMR isn't affected. `connect-src` allows `*.supabase.co` and
+  `*.whop.com`; narrow this once T1.2 confirms the exact Whop checkout
+  domain(s) in use.
 
 ### T2.3 RLS verification script
 - **Why:** the privacy model ("code visible only to developer, buyer,
@@ -637,12 +663,12 @@ file when it does.
 | T0.3 | M0 | Doc supersession banner | — | 15 m |
 | T1.1 | M1 | Worker deploy artifacts | ⛔ host choice | 1 d |
 | T1.2 | M1 | Whop API verification | ⛔ doc excerpts | 1 d |
-| T1.3 | M1 | Webhook race/idempotency | — | ½ d |
+| T1.3 | M1 | Webhook race/idempotency ✅ done | — | ½ d |
 | T1.4 | M1 | Ready probe + env validation | — | ½ d |
-| T1.5 | M1 | Rate limiting + caps | — | 1 d |
+| T1.5 | M1 | Rate limiting + caps ✅ done | — | 1 d |
 | T1.6 | M1 | Prod bring-up | ⛔ runbook | 1–2 d |
-| T2.1 | M2 | Sandbox lockdown | — | ½ d |
-| T2.2 | M2 | Security headers/CSP | — | ½ d |
+| T2.1 | M2 | Sandbox lockdown ✅ done | — | ½ d |
+| T2.2 | M2 | Security headers/CSP ✅ done | — | ½ d |
 | T2.3 | M2 | RLS verification script | — | ½ d |
 | T2.4 | M2 | Dep + secret scanning CI | — | 2 h |
 | T2.5 | M2 | LLM-output injection review | — | ½ d |

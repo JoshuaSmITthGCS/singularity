@@ -18,7 +18,10 @@ const COMPLEXITY_MULTIPLIER: Record<Complexity, number> = {
   high: 5.0,
 }
 const QUALITY_BONUS_PER_POINT_CENTS = 100 // quality_score * $1.00, score in [0,5]
-const PRICE_FLOOR_CENTS = 400 // never list below the verification-cost floor
+// $6, not $4: the platform absorbs Whop's processing fee (2.9% + $0.30) rather
+// than passing it through, and a $4 sale's fixed $0.30 fee alone eats ~7.5% of
+// revenue before verification cost is even counted. See docs/PRICING.md §4.
+const PRICE_FLOOR_CENTS = 600
 const LANGUAGE_RARITY_FACTOR = 1.0 // TBD per spec
 
 // quality_score is a 0–5 value (NUMERIC(3,2) in the schema).

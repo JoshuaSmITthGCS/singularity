@@ -265,9 +265,11 @@ always through the `marketplace_*` views, which omit code.
   `worker/src/pricing.ts`):
   `price = max(floor, BASE × complexity_multiplier + quality_score × quality_bonus)`.
   Formula v2: base `$4.00`; multipliers low/med/high = `1.0 / 2.5 / 5.0`;
-  quality bonus `$1.00`/point on a 0–5 scale; floor `$4.00` (range $4–$25).
-  Initial price uses complexity only; the worker adds the quality bonus after
-  verification. Rationale, comps, and margin math: **`docs/PRICING.md`**.
+  quality bonus `$1.00`/point on a 0–5 scale; floor `$6.00` (range $6–$25 —
+  the floor is above the $4 base because the platform absorbs Whop's
+  processing fee). Initial price uses complexity only; the worker adds the
+  quality bonus after verification. Rationale, comps, and margin math:
+  **`docs/PRICING.md`**.
 - **Revenue split (`src/lib/constants.ts`):** developer **70%**, platform
   **25%**, referral reserve **5%** (`DEVELOPER_SHARE_RATE` etc.). Applied in
   `lib/procurements` and `computeRevenueSplitCents`.

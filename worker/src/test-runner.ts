@@ -217,6 +217,23 @@ async function runContainer({
       Binds: [`${workspace}:/workspace:${workspaceMode}`, `${reports}:/reports:rw`],
       Memory: memory,
       NanoCpus: 1_000_000_000,
+      // T2.1 sandbox lockdown: caps + no-new-privileges close off privilege
+      // escalation from translated code we don't control; PidsLimit stops a
+      // fork bomb (`while(true) fork()`) from starving the host; Ulimits and
+      // a tmpfs /tmp bound the blast radius of a single hostile test writing
+      // an oversized file. fsize is 256 MB rather than the ~64 MB a stricter
+      // profile would use — Java/C++ builds occasionally emit single
+      // artifacts (debug symbols, uber-jars) larger than 64 MB, and this is
+      // guarding against a deliberate multi-GB fill, not shaving legitimate
+      // headroom.
+      CapDrop: ["ALL"],
+      SecurityOpt: ["no-new-privileges"],
+      PidsLimit: 256,
+      Ulimits: [
+        { Name: "nofile", Soft: 1024, Hard: 1024 },
+        { Name: "fsize", Soft: 268_435_456, Hard: 268_435_456 },
+      ],
+      Tmpfs: { "/tmp": "rw,size=64m" },
     },
   })
 

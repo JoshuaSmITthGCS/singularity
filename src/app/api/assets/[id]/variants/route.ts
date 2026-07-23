@@ -2,6 +2,7 @@ import { z } from "zod"
 import { dataResponse, errorResponse } from "@/lib/api"
 import { demoVariants, getDemoAsset } from "@/lib/demo-data"
 import { isDemoMode } from "@/lib/demo-mode"
+import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { languageSchema } from "@/lib/validation"
@@ -9,6 +10,11 @@ import { languageSchema } from "@/lib/validation"
 const requestVariantSchema = z.object({
   language: languageSchema,
 })
+
+// Each request can trigger an LLM translation, so it shares the same
+// per-user budget class as publishing.
+const VARIANT_REQUEST_LIMIT = 10
+const VARIANT_REQUEST_WINDOW_MS = 60 * 60 * 1000
 
 // On-demand translation (unit economics): cross-language variants are not
 // produced at publish. A signed-in user requests a language here; the variant
@@ -28,6 +34,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const language = parsed.data.language
 
   if (isDemoMode()) {
+    const rateLimit = await checkRateLimit({
+      key: `variants:ip:${getClientIp(request)}`,
+      limit: VARIANT_REQUEST_LIMIT,
+      windowMs: VARIANT_REQUEST_WINDOW_MS,
+    })
+    if (!rateLimit.allowed) return rateLimitedResponse(rateLimit)
+
     const asset = getDemoAsset(assetId)
     if (!asset) return errorResponse("Asset not found", 404, { code: "ASSET_NOT_FOUND" })
 
@@ -53,6 +66,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   } = await supabase.auth.getUser()
 
   if (!user) return errorResponse("Sign in first", 401, { code: "UNAUTHENTICATED" })
+
+  const rateLimit = await checkRateLimit({
+    key: `variants:user:${user.id}`,
+    limit: VARIANT_REQUEST_LIMIT,
+    windowMs: VARIANT_REQUEST_WINDOW_MS,
+  })
+  if (!rateLimit.allowed) return rateLimitedResponse(rateLimit)
 
   const admin = createAdminClient()
   const { data: asset, error: assetError } = await admin

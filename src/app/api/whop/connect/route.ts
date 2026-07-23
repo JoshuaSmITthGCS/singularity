@@ -1,5 +1,6 @@
 import { dataResponse, errorResponse } from "@/lib/api"
 import { isDemoMode } from "@/lib/demo-mode"
+import { checkRateLimit, rateLimitedResponse } from "@/lib/rate-limit"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { getAppUrl } from "@/lib/env"
@@ -20,6 +21,13 @@ export async function POST() {
   } = await supabase.auth.getUser()
 
   if (!user) return errorResponse("Sign in first", 401)
+
+  const rateLimit = await checkRateLimit({
+    key: `whop-connect:user:${user.id}`,
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  })
+  if (!rateLimit.allowed) return rateLimitedResponse(rateLimit)
 
   const { data: profile, error: profileError } = await admin
     .from("profiles")

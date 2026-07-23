@@ -336,6 +336,13 @@ export type Database = {
         }
         Returns: AssetVariant[]
       }
+      increment_rate_limit: {
+        Args: {
+          p_bucket_key: string
+          p_window_start: string
+        }
+        Returns: number
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

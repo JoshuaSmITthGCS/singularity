@@ -62,10 +62,20 @@ export async function POST(request: Request) {
     return new Response("missing asset or variant", { status: 200 })
   }
 
-  await admin
+  const { error: markPaidError } = await admin
     .from("procurements")
     .update({ status: "paid", whop_payment_id: whopPaymentId })
     .eq("id", procurement.id)
+
+  // 23505 = unique_violation: this payment id is already attached to a
+  // *different* procurement row (idx_procurements_whop_payment_id_unique).
+  // That should only happen from a Whop-side anomaly, not a normal retry —
+  // don't deliver against a payment attribution we can't trust. Acknowledge
+  // with 200 so Whop stops retrying; this procurement needs manual review.
+  if (markPaidError?.code === "23505") {
+    console.error(`Whop payment ${whopPaymentId} already attached to a different procurement`)
+    return new Response("payment already attributed elsewhere", { status: 200 })
+  }
 
   const { data: clientProfile } = await admin
     .from("profiles")

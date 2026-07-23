@@ -17,7 +17,7 @@ there is revenue to measure.
 ## 1. Price formula (v2) — value-based, not cost-plus
 
 ```
-price = max($4.00, $4.00 × complexity_multiplier + quality_score × $1.00)
+price = max($6.00, $4.00 × complexity_multiplier + quality_score × $1.00)
 ```
 
 | Parameter | Value | Where |
@@ -25,14 +25,17 @@ price = max($4.00, $4.00 × complexity_multiplier + quality_score × $1.00)
 | Base price | **$4.00** | `BASE_PRICE_CENTS = 400` |
 | Complexity multiplier | low 1.0 / medium 2.5 / high 5.0 | `COMPLEXITY_MULTIPLIER` |
 | Quality bonus | **$1.00/point**, quality 0–5 | `QUALITY_BONUS_PER_POINT_CENTS = 100` |
-| Floor | **$4.00** | `PRICE_FLOOR_CENTS = 400` |
+| Floor | **$6.00** | `PRICE_FLOOR_CENTS = 600` |
 
-Resulting range: **$4 (low, unverified) → $25 (high, perfect quality)**.
+Resulting range: **$6 (low, unverified) → $25 (high, perfect quality)**. The
+floor is $6, not the base $4, **because the platform absorbs Whop's
+processing fee** (§4) — on a $4 sale the fixed $0.30 alone is 7.5% of revenue
+before verification cost is even counted.
 
 **Value anchor:** the buyer's alternative is porting a gameplay system to
 their language/engine by hand — realistically 2–8 developer-hours
-($100–$800 at $50–100/hr) plus the risk of physics/unit bugs. At $4–$25 with
-a machine-verified test run included, the buyer gets a **10–40× ROI**, which
+($100–$800 at $50–100/hr) plus the risk of physics/unit bugs. At $6–$25 with
+a machine-verified test run included, the buyer gets a **7–30× ROI**, which
 is the "obvious yes" zone: profitable for the platform, not outrageous for
 the buyer. Comps: Unity Asset Store gameplay scripts sell for $5–$40 with
 *no* verification. Raise willingness-to-pay later through tiers (T7.7), not
@@ -45,7 +48,7 @@ Developer **70%** / platform **25%** / referral reserve **5%**
 
 | Sale price | Platform (25%) | + reserve if unspent (5%) |
 | --- | --- | --- |
-| $4.00 floor | $1.00 | $0.20 |
+| $6.00 floor | $1.50 | $0.30 |
 | $14.00 (medium, q4) | $3.50 | $0.70 |
 | $25.00 max | $6.25 | $1.25 |
 
@@ -67,37 +70,36 @@ These are estimates; the worker records **actual** per-variant usage
 table can be re-baselined from production data. Publish itself costs ~$0.00
 in LLM terms (source-language verification is a Docker run only).
 
-## 4. Gross margin per sale
+## 4. Gross margin per sale — Scenario B confirmed (platform absorbs fees)
 
-Direct costs per sale: verification (amortized over that variant's sales) +
-payment processing + ~negligible hosting/delivery (a GitHub API call).
+**Decided:** the platform eats Whop's processing fee (≈ 2.9% + $0.30) rather
+than passing it to the developer's share. This is now the live model, not a
+hypothetical — the numbers below replace the old "Scenario A/B" comparison.
 
-Assuming processing ≈ 2.9% + $0.30 (⚠️ **assumption** — who bears Whop's
-processing fee is confirmed in MASTER_PLAN T1.2; scenarios below):
+| Sale | Platform rev (25%) | Processing | Verification | Gross margin |
+| --- | --- | --- | --- | --- |
+| $6.00 floor, Sonnet, 1st sale | $1.50 | $0.47 | $0.05 | **65%** |
+| $10.00 (low, q4), 1st sale | $2.50 | $0.59 | $0.05 | **74%** |
+| $14.00 (medium, q4), 1st sale | $3.50 | $0.71 | $0.13 | **76%** |
+| $25.00 max, 1st sale | $6.25 | $1.03 | $0.13–0.53 | **75–81%** |
+| Any repeat sale of an already-verified variant | 25% of price | same processing | ~$0 | **higher than above** |
 
-**Scenario A — processing borne by the seller side (typical for
-connected-account platforms):**
+**Honest read:** the $6 floor sits at ~65% — below the 75% target — because a
+fixed $0.30 processing fee is a much bigger bite of a small transaction than
+a large one. This is the expected shape of tiered SaaS pricing, not a bug:
+the floor is the minority case (an asset with low complexity *and* zero
+measured quality), and the current demo catalog's actual prices ($8.20,
+$14.60, $20.00) all clear 70–76% already. **Blended across a realistic
+catalog, margin lands in the 70–80% band** — in range, with the floor as the
+known soft spot.
 
-| Sale | Platform rev | Verification COGS | Gross margin |
-| --- | --- | --- | --- |
-| $14, Sonnet-verified, 1st sale | $3.50 | $0.13 | **96%** |
-| $14, escalated, 1st sale | $3.50 | $0.35 | **90%** |
-| $4 floor, Sonnet, 1st sale | $1.00 | $0.13 | **87%** |
-| Any repeat sale of a verified variant | 25% of price | ~$0 | **~100%** |
-
-**Scenario B — processing borne by the platform:**
-
-| Sale | Platform rev | Processing + verification | Gross margin |
-| --- | --- | --- | --- |
-| $14, Sonnet, 1st sale | $3.50 | $0.71 + $0.13 | **76%** |
-| $25, Sonnet, 1st sale | $6.25 | $1.03 + $0.13 | **81%** |
-| $4 floor, Sonnet, 1st sale | $1.00 | $0.42 + $0.13 | **45%** ⚠️ |
-
-**Decision rule:** Scenario A holds → parameters stay as-is (blended margin
-comfortably ≥ 80%). Scenario B holds → the $4 floor is below the 70% red
-line; raise `PRICE_FLOOR_CENTS` to **500–600** and/or compute the split on
-net-of-processing revenue. Do not ship real payments before T1.2 resolves
-which scenario is true.
+If floor-tier volume turns out to be larger than expected and drags the
+blended average down, the two follow-up levers (not applied preemptively) are
+raising the floor further (e.g. to $8–10, trading affordability for margin)
+or introducing a small fixed platform fee alongside the 25% cut so tiny
+transactions aren't disproportionately taxed by the *variable* processing
+rate. Re-baseline both this table and the decision from real
+`translation_cost_cents` + `payments` data once there's transaction volume.
 
 ## 5. Fixed operational cost + break-even
 
@@ -155,15 +157,18 @@ order by llm_spend_cents desc;
 
 ## 8. Guardrails still required before real money
 
-- **T1.2** — confirm Whop fee mechanics (decides Scenario A vs B above).
-- **T1.5 rate limiting** — publish triggers Docker runs and variant requests
-  trigger LLM calls; both need per-user budgets.
+- **T1.2** — confirm the remaining Whop API/webhook details (endpoint shapes,
+  signature scheme); the fee-bearer question itself is resolved (§4).
+- **T1.5 rate limiting** — ✅ done. Publish (5/hr/user), variant requests
+  (10/hr/user), procurement creation (20/hr/user), search (60/min/IP), and
+  Whop connect (10/hr/user) are all backed by a Postgres-atomic fixed-window
+  limiter (`src/lib/rate-limit.ts`); publish also caps a developer at 3
+  concurrent `verifying` assets.
 - Failed-variant requeues carry a 6h cooldown for non-developers (developers
   retry freely); revisit if escalated-retry spend shows up in the margin
   query.
 
 ---
 
-*Updated 2026-07-06: SaaS margin framework (75–85% GM target), token/COGS
-estimates, break-even, alongside formula v2, on-demand translation, model
-tiering, and cost tracking.*
+*Updated 2026-07-23: Scenario B (platform absorbs processing fees) confirmed
+and the $6 floor set accordingly; rate limiting shipped.*

@@ -3,8 +3,8 @@ import { computeAssetPriceCents, computeRevenueSplitCents } from "@/lib/pricing"
 
 describe("computeAssetPriceCents (TRD §7.4, v2 curve)", () => {
   it("prices on complexity alone when quality is unknown", () => {
-    // BASE $4.00 × multiplier, no quality bonus.
-    expect(computeAssetPriceCents({ complexity: "low", qualityScore: 0 })).toBe(400)
+    // BASE $4.00 × multiplier, no quality bonus. Low hits the $6 floor.
+    expect(computeAssetPriceCents({ complexity: "low", qualityScore: 0 })).toBe(600)
     expect(computeAssetPriceCents({ complexity: "medium", qualityScore: 0 })).toBe(1000)
     expect(computeAssetPriceCents({ complexity: "high", qualityScore: 0 })).toBe(2000)
   })
@@ -18,12 +18,12 @@ describe("computeAssetPriceCents (TRD §7.4, v2 curve)", () => {
 
   it("clamps the quality score to the 0–5 range", () => {
     expect(computeAssetPriceCents({ complexity: "low", qualityScore: 99 })).toBe(900) // 400 + 5×100
-    expect(computeAssetPriceCents({ complexity: "low", qualityScore: -5 })).toBe(400)
-    expect(computeAssetPriceCents({ complexity: "low", qualityScore: NaN })).toBe(400)
+    expect(computeAssetPriceCents({ complexity: "low", qualityScore: -5 })).toBe(600) // floor
+    expect(computeAssetPriceCents({ complexity: "low", qualityScore: NaN })).toBe(600) // floor
   })
 
-  it("never lists below the $4 verification-cost floor", () => {
-    expect(computeAssetPriceCents({ complexity: "low", qualityScore: 0 })).toBeGreaterThanOrEqual(400)
+  it("never lists below the $6 processing-fee-aware floor", () => {
+    expect(computeAssetPriceCents({ complexity: "low", qualityScore: 0 })).toBeGreaterThanOrEqual(600)
   })
 
   it("returns whole-cent integers", () => {

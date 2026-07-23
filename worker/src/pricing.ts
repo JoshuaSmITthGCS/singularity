@@ -9,7 +9,8 @@ export type Complexity = "low" | "medium" | "high"
 const BASE_PRICE_CENTS = 400
 const COMPLEXITY_MULTIPLIER: Record<Complexity, number> = { low: 1.0, medium: 2.5, high: 5.0 }
 const QUALITY_BONUS_PER_POINT_CENTS = 100
-const PRICE_FLOOR_CENTS = 400
+// $6 — the platform absorbs Whop processing fees; see docs/PRICING.md §4.
+const PRICE_FLOOR_CENTS = 600
 
 export function computeAssetPriceCents(input: { complexity: Complexity; qualityScore: number }): number {
   const complexityComponent = BASE_PRICE_CENTS * COMPLEXITY_MULTIPLIER[input.complexity]

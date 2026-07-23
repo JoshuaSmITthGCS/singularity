@@ -15,7 +15,7 @@ export type ApiErrorDetails = Record<string, unknown>
 export function errorResponse(
   message: string,
   status = 400,
-  options?: { code?: string; details?: ApiErrorDetails }
+  options?: { code?: string; details?: ApiErrorDetails; headers?: Record<string, string> }
 ) {
   const code = options?.code ?? defaultCodeForStatus(status)
   const requestId = `req_${cryptoRandom()}`
@@ -34,8 +34,11 @@ export function errorResponse(
     },
     {
       status,
-      // AUTH-001: unauthenticated requests must carry WWW-Authenticate.
-      headers: status === 401 ? { "WWW-Authenticate": "Bearer" } : undefined,
+      headers: {
+        // AUTH-001: unauthenticated requests must carry WWW-Authenticate.
+        ...(status === 401 ? { "WWW-Authenticate": "Bearer" } : null),
+        ...options?.headers,
+      },
     }
   )
 }
