@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { MarketplaceSearch } from "@/components/MarketplaceSearch"
 import { getMarketplaceAssets } from "@/lib/marketplace/queries"
 
@@ -36,7 +37,9 @@ export default async function MarketplacePage() {
           Current beachhead: reusable scripting assets for teams that need portability and clear quality signals before integration.
         </p>
       </div>
-      <MarketplaceSearch assets={assets} />
+      <Suspense fallback={<p className="text-sm text-muted-foreground">Loading search…</p>}>
+        <MarketplaceSearch assets={assets} />
+      </Suspense>
     </main>
   )
 }

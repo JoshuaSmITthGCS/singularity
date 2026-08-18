@@ -3,6 +3,7 @@ import { claimNextVariant } from "./claim.js"
 import { supabase } from "./db.js"
 import { runTests } from "./test-runner.js"
 import { translateVariant } from "./translator.js"
+import { generateAutoTags, persistAutoTags } from "./tagger.js"
 import { computeAssetPriceCents, computeQualityScore, type Complexity } from "./pricing.js"
 import type { Asset } from "./types.js"
 
@@ -92,6 +93,12 @@ async function processVariant(variantId: string, assetId: string, targetLanguage
       .update({ status: "published", quality_score: qualityScore, price_cents: priceCents })
       .eq("id", asset.id)
       .throwOnError()
+
+    // Phase 1 auto-tagging: best-effort — a tagging failure must never block
+    // publishing, so log and move on rather than throwing.
+    await generateAutoTags(asset)
+      .then((tags) => (tags ? persistAutoTags(asset.id, tags) : undefined))
+      .catch((error) => console.error(`Auto-tagging failed for ${asset.id}:`, error))
   }
 
   console.log(`Processed ${variantId}: ${testResult.status}`)

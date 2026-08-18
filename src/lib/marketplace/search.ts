@@ -74,38 +74,74 @@ export async function searchAssets(params: SearchQueryInput): Promise<{
   }
 }
 
+// Demo fixtures only carry freeform display tags (a.tags), not the controlled
+// TagSchema vocabulary — map each demo asset to real genre/purpose/actions/
+// engine values so the structured search filters have something to match in
+// demo mode (the default zero-config mode most people first run).
+const DEMO_STRUCTURED_TAGS: Record<string, Pick<SearchResult, "genre" | "purpose" | "actions" | "compatible_engines">> = {
+  "10000000-0000-4000-8000-000000000001": {
+    genre: ["game"],
+    purpose: ["state-management"],
+    actions: ["validate"],
+    compatible_engines: ["generic", "unity"],
+  },
+  "10000000-0000-4000-8000-000000000002": {
+    genre: ["game"],
+    purpose: ["state-management"],
+    actions: ["calculate"],
+    compatible_engines: ["generic"],
+  },
+  "10000000-0000-4000-8000-000000000003": {
+    genre: ["game", "simulation"],
+    purpose: ["math"],
+    actions: ["generate", "simulate"],
+    compatible_engines: ["generic", "unity"],
+  },
+}
+
 function demoDataAsResults(): SearchResult[] {
   return demoAssets
     .filter((a) => a.status === "published")
-    .map((a) => ({
-      id: a.id,
-      developer_id: a.developer_id,
-      primary_language: a.source_language,
-      title: a.title,
-      short_description: a.short_description,
-      summary: a.summary,
-      price_cents: a.price_cents,
-      quality_score: 4.5,
-      complexity: "medium",
-      view_count: a.view_count,
-      procurement_count: a.procurement_count,
-      created_at: a.created_at,
-      genre: a.tags,
-      purpose: [],
-      actions: [],
-      keywords: a.tags,
-      compatible_engines: [],
-    }))
+    .map((a) => {
+      const structured = DEMO_STRUCTURED_TAGS[a.id]
+      return {
+        id: a.id,
+        developer_id: a.developer_id,
+        primary_language: a.source_language,
+        title: a.title,
+        short_description: a.short_description,
+        summary: a.summary,
+        price_cents: a.price_cents,
+        quality_score: 4.5,
+        complexity: "medium",
+        view_count: a.view_count,
+        procurement_count: a.procurement_count,
+        created_at: a.created_at,
+        genre: structured?.genre ?? [],
+        purpose: structured?.purpose ?? [],
+        actions: structured?.actions ?? [],
+        keywords: a.tags,
+        compatible_engines: structured?.compatible_engines ?? [],
+      }
+    })
 }
 
 function applyDemoFilters(all: SearchResult[], params: SearchQueryInput) {
   return all.filter((r) => {
     if (params.complexity && r.complexity !== params.complexity) return false
     if (params.lang?.length && !params.lang.includes(r.primary_language as never)) return false
+    if (params.genre?.length && !overlaps(r.genre, params.genre)) return false
+    if (params.purpose?.length && !overlaps(r.purpose, params.purpose)) return false
+    if (params.actions?.length && !overlaps(r.actions, params.actions)) return false
+    if (params.engine?.length && !overlaps(r.compatible_engines, params.engine)) return false
     if (params.q) {
       const haystack = `${r.title} ${r.short_description} ${r.summary}`.toLowerCase()
       if (!haystack.includes(params.q.toLowerCase())) return false
     }
     return true
   })
+}
+
+function overlaps(values: string[] | null, filter: readonly string[]) {
+  return (values ?? []).some((v) => filter.includes(v))
 }
