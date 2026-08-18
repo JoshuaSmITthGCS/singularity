@@ -19,3 +19,13 @@ export function getGitHubInstallUrl() {
 export function getGitHubWebhookSecret() {
   return getRequiredEnv("GITHUB_APP_WEBHOOK_SECRET")
 }
+
+export function hasGitHubAppEnv() {
+  return Boolean(
+    process.env.GITHUB_APP_ID &&
+      process.env.GITHUB_APP_CLIENT_ID &&
+      process.env.GITHUB_APP_CLIENT_SECRET &&
+      process.env.GITHUB_APP_PRIVATE_KEY &&
+      process.env.GITHUB_APP_WEBHOOK_SECRET
+  )
+}
