@@ -99,9 +99,14 @@ export type WhopWebhookEvent = {
   }
 }
 
+// Confirmed against the real event list on the Whop webhook-creation page
+// (underscored names — "payment_succeeded" / "membership_activated" — not the
+// dotted "payment.succeeded" this file previously guessed). The dotted forms
+// are kept as a harmless fallback in case a future Whop API version reverts.
 const PAYMENT_SUCCESS_EVENTS = new Set([
-  "payment.succeeded",
   "payment_succeeded",
+  "payment.succeeded",
+  "membership_activated",
   "membership.went_valid",
   "membership_went_valid",
 ])
