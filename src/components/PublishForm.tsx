@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ArrowRight, Check, FileCode2, Github, Loader2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, ChevronDown, FileCode2, Github, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -57,6 +57,7 @@ export function PublishForm() {
   const [longDescription, setLongDescription] = useState("")
   const [tags, setTags] = useState("")
   const [complexity, setComplexity] = useState<Complexity>("medium")
+  const [pricingExpanded, setPricingExpanded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -387,26 +388,60 @@ export function PublishForm() {
 
       {step === "price" ? (
         <section className="space-y-3">
-          <Label htmlFor="complexity">Complexity tier</Label>
-          <select
-            id="complexity"
-            value={complexity}
-            onChange={(event) => setComplexity(event.target.value as Complexity)}
-            className="h-10 w-full rounded-md border border-border bg-panel px-3 text-sm"
+          <span className="block text-sm font-medium text-foreground" id="complexity-label">
+            Complexity tier
+          </span>
+          <button
+            type="button"
+            onClick={() => setPricingExpanded((value) => !value)}
+            aria-expanded={pricingExpanded}
+            aria-controls="complexity-options"
+            className="flex w-full items-center justify-between rounded-lg border border-border bg-panel px-4 py-3 text-left"
           >
-            {COMPLEXITY_LEVELS.map((level) => (
-              <option key={level} value={level}>
-                {level[0].toUpperCase() + level.slice(1)}
-              </option>
-            ))}
-          </select>
+            <span className="flex items-baseline gap-2">
+              <span className="text-sm font-medium">
+                {complexity[0].toUpperCase() + complexity.slice(1)}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                ${(computeAssetPriceCents({ complexity, qualityScore: 0 }) / 100).toFixed(2)} est.
+              </span>
+            </span>
+            <ChevronDown
+              size={16}
+              aria-hidden
+              className={`text-muted-foreground transition-transform ${pricingExpanded ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {pricingExpanded ? (
+            <div id="complexity-options" role="radiogroup" aria-labelledby="complexity-label" className="grid gap-2 sm:grid-cols-3">
+              {COMPLEXITY_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  role="radio"
+                  aria-checked={complexity === level}
+                  onClick={() => {
+                    setComplexity(level)
+                    setPricingExpanded(false)
+                  }}
+                  className={`rounded-lg border p-3 text-left transition ${
+                    complexity === level ? "border-primary bg-[var(--primary-soft)]" : "border-border bg-panel"
+                  }`}
+                >
+                  <span className="block text-sm font-medium">{level[0].toUpperCase() + level.slice(1)}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    ${(computeAssetPriceCents({ complexity: level, qualityScore: 0 }) / 100).toFixed(2)} est.
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+
           <p className="text-sm text-muted-foreground">
             Pricing is computed from the platform unit-economics formula (complexity tier + verified
-            quality score), not set manually. Estimated starting price:{" "}
-            <span className="font-medium text-foreground">
-              ${(computeAssetPriceCents({ complexity, qualityScore: 0 }) / 100).toFixed(2)}
-            </span>{" "}
-            (a quality bonus is added after verification). Delivered procurements use the 70/25/5 split.
+            quality score), not set manually. A quality bonus is added after verification. Delivered
+            procurements use the 70/25/5 split.
           </p>
         </section>
       ) : null}
