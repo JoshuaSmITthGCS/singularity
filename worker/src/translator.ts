@@ -73,7 +73,11 @@ const TRANSLATION_RULES = [
   "Keep adaptation_log and notes_for_pr concise enough to include in a pull request body.",
 ].join("\n")
 
-export async function translateVariant(asset: Asset, targetLanguage: Language): Promise<TranslationResult> {
+export async function translateVariant(
+  asset: Asset,
+  targetLanguage: Language,
+  model: string = workerConfig.anthropicModel
+): Promise<TranslationResult> {
   if (targetLanguage === asset.source_language) {
     return {
       translated_code: asset.source_code,
@@ -108,7 +112,7 @@ export async function translateVariant(asset: Asset, targetLanguage: Language): 
   // text block to valid JSON matching translationSchema. Adaptive thinking lets
   // Claude reason about the adaptation before emitting the result.
   const stream = client.messages.stream({
-    model: workerConfig.anthropicModel,
+    model,
     max_tokens: 32000,
     thinking: { type: "adaptive" },
     output_config: {
@@ -139,5 +143,18 @@ export async function translateVariant(asset: Asset, targetLanguage: Language): 
 
   // output_config.format guarantees the text is JSON matching the schema; parse
   // defensively so a malformed response fails loudly rather than silently.
-  return translationSchema.parse(JSON.parse(textBlock.text))
+  const parsed = translationSchema.parse(JSON.parse(textBlock.text))
+
+  // Usage feeds per-variant cost tracking (§ docs/PRICING.md): margin has to be
+  // measured, not assumed.
+  return {
+    ...parsed,
+    usage: {
+      model,
+      input_tokens: message.usage.input_tokens,
+      output_tokens: message.usage.output_tokens,
+      cache_read_input_tokens: message.usage.cache_read_input_tokens ?? 0,
+      cache_creation_input_tokens: message.usage.cache_creation_input_tokens ?? 0,
+    },
+  }
 }

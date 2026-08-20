@@ -17,7 +17,8 @@ export default async function MarketplacePage() {
           <p className="text-sm font-medium uppercase text-muted-foreground">Client search</p>
           <h1 className="mt-1 text-3xl font-semibold">Find trusted code by function</h1>
           <p className="mt-2 text-muted-foreground">
-            Browse Stage 1 verified assets and pick targets that already passed automated checks for TypeScript, JavaScript, and Java.
+            Browse verified assets and pick a target that already passed automated checks in your
+            language — TypeScript, JavaScript, Java, C#, or C++.
           </p>
         </div>
         <div className="grid min-w-64 grid-cols-2 overflow-hidden rounded-lg border border-border bg-panel text-sm">
@@ -33,7 +34,8 @@ export default async function MarketplacePage() {
       </div>
       <div className="mb-5 rounded-lg border border-[#dbc38f] bg-[var(--accent-soft)] p-4 text-sm text-[#744c16]">
         <p>
-          Current beachhead: reusable scripting assets for teams that need portability and clear quality signals before integration.
+          Current beachhead: gameplay systems and tooling for game teams that need portability across
+          engines and clear quality signals before integration.
         </p>
       </div>
       <MarketplaceSearch assets={assets} />

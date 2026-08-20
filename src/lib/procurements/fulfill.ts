@@ -23,20 +23,36 @@ export async function fulfillProcurement({
   variant: AssetVariant
   clientInstallationId: number | null
 }): Promise<Procurement> {
-  // Idempotency: a webhook can fire more than once. Never deliver twice.
-  if (procurement.status === "delivered") return procurement
+  // T1.3: atomic claim, not check-then-act. Two concurrent invocations (a
+  // Whop webhook retry racing the original delivery) can both read
+  // status='paid' before either writes anything — a plain "if not delivered,
+  // update to delivering" is a classic TOCTOU that would open two PRs and
+  // insert two payment rows for one sale. A single conditional UPDATE lets
+  // only one caller flip the status; the loser gets zero rows back and exits
+  // as a no-op, regardless of which process reads first.
+  const { data: claimed, error: claimError } = await admin
+    .from("procurements")
+    .update({ status: "delivering" })
+    .eq("id", procurement.id)
+    .in("status", ["awaiting_payment", "paid"])
+    .select("*")
+    .maybeSingle()
 
-  await admin.from("procurements").update({ status: "delivering" }).eq("id", procurement.id)
+  if (claimError || !claimed) {
+    // Already delivered, already being delivered by the winner of a
+    // concurrent race, or in a terminal state — idempotent no-op.
+    return procurement
+  }
 
   try {
     const delivery = await deliverProcurement({
-      procurementId: procurement.id,
+      procurementId: claimed.id,
       clientInstallationId,
       asset,
       variant,
-      deliveryMethod: procurement.delivery_method,
-      targetRepoFullName: procurement.target_repo_full_name,
-      targetRepoBranch: procurement.target_repo_branch,
+      deliveryMethod: claimed.delivery_method,
+      targetRepoFullName: claimed.target_repo_full_name,
+      targetRepoBranch: claimed.target_repo_branch,
     })
 
     const { data: delivered, error: deliveredError } = await admin
@@ -46,7 +62,7 @@ export async function fulfillProcurement({
         pr_url: delivery.prUrl,
         pr_number: delivery.prNumber,
       })
-      .eq("id", procurement.id)
+      .eq("id", claimed.id)
       .select("*")
       .single()
 
@@ -60,9 +76,9 @@ export async function fulfillProcurement({
 
     await Promise.all([
       admin.from("payments").insert({
-        procurement_id: procurement.id,
+        procurement_id: claimed.id,
         developer_id: asset.developer_id,
-        amount_cents: procurement.developer_share_cents,
+        amount_cents: claimed.developer_share_cents,
         status: "paid",
         paid_at: new Date().toISOString(),
       }),
@@ -70,7 +86,7 @@ export async function fulfillProcurement({
         .from("profiles")
         .update({
           total_earnings_cents:
-            Number(developerProfile?.total_earnings_cents ?? 0) + procurement.developer_share_cents,
+            Number(developerProfile?.total_earnings_cents ?? 0) + claimed.developer_share_cents,
         })
         .eq("id", asset.developer_id),
       admin
@@ -82,13 +98,18 @@ export async function fulfillProcurement({
     return delivered as Procurement
   } catch (error) {
     const message = error instanceof Error ? error.message : "Delivery failed"
+    // NOTE: this lands in a genuinely terminal 'failed' state with no retry
+    // path today. T3.3 (stuck-procurement recovery) would set this to 'paid'
+    // + failure_reason instead so a "Retry delivery" action is meaningful —
+    // don't make that change here without also shipping the retry affordance,
+    // or a failed delivery silently becomes an unexplained "Pending" forever.
     const { data: failed } = await admin
       .from("procurements")
       .update({ status: "failed", failure_reason: message })
-      .eq("id", procurement.id)
+      .eq("id", claimed.id)
       .select("*")
       .single()
 
-    return failed as Procurement
+    return (failed as Procurement) ?? claimed
   }
 }

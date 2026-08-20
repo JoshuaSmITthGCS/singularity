@@ -1,25 +1,29 @@
 import { describe, expect, it } from "vitest"
 import { computeAssetPriceCents, computeRevenueSplitCents } from "@/lib/pricing"
 
-describe("computeAssetPriceCents (TRD §7.4)", () => {
+describe("computeAssetPriceCents (TRD §7.4, v2 curve)", () => {
   it("prices on complexity alone when quality is unknown", () => {
-    // BASE $0.50 × multiplier, no quality bonus.
-    expect(computeAssetPriceCents({ complexity: "low", qualityScore: 0 })).toBe(50)
-    expect(computeAssetPriceCents({ complexity: "medium", qualityScore: 0 })).toBe(125)
-    expect(computeAssetPriceCents({ complexity: "high", qualityScore: 0 })).toBe(250)
+    // BASE $4.00 × multiplier, no quality bonus. Low hits the $6 floor.
+    expect(computeAssetPriceCents({ complexity: "low", qualityScore: 0 })).toBe(600)
+    expect(computeAssetPriceCents({ complexity: "medium", qualityScore: 0 })).toBe(1000)
+    expect(computeAssetPriceCents({ complexity: "high", qualityScore: 0 })).toBe(2000)
   })
 
-  it("adds the quality bonus ($0.20/point) on top of complexity", () => {
-    // medium = 125c, + 4 × 20c = 80c → 205c
-    expect(computeAssetPriceCents({ complexity: "medium", qualityScore: 4 })).toBe(205)
-    // high = 250c, + 5 × 20c = 100c → 350c
-    expect(computeAssetPriceCents({ complexity: "high", qualityScore: 5 })).toBe(350)
+  it("adds the quality bonus ($1.00/point) on top of complexity", () => {
+    // medium = 1000c, + 4 × 100c = 400c → 1400c
+    expect(computeAssetPriceCents({ complexity: "medium", qualityScore: 4 })).toBe(1400)
+    // high = 2000c, + 5 × 100c = 500c → 2500c ($25 ceiling of the curve)
+    expect(computeAssetPriceCents({ complexity: "high", qualityScore: 5 })).toBe(2500)
   })
 
   it("clamps the quality score to the 0–5 range", () => {
-    expect(computeAssetPriceCents({ complexity: "low", qualityScore: 99 })).toBe(150) // 50 + 5×20
-    expect(computeAssetPriceCents({ complexity: "low", qualityScore: -5 })).toBe(50)
-    expect(computeAssetPriceCents({ complexity: "low", qualityScore: NaN })).toBe(50)
+    expect(computeAssetPriceCents({ complexity: "low", qualityScore: 99 })).toBe(900) // 400 + 5×100
+    expect(computeAssetPriceCents({ complexity: "low", qualityScore: -5 })).toBe(600) // floor
+    expect(computeAssetPriceCents({ complexity: "low", qualityScore: NaN })).toBe(600) // floor
+  })
+
+  it("never lists below the $6 processing-fee-aware floor", () => {
+    expect(computeAssetPriceCents({ complexity: "low", qualityScore: 0 })).toBeGreaterThanOrEqual(600)
   })
 
   it("returns whole-cent integers", () => {

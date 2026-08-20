@@ -1,14 +1,29 @@
 import { createHash } from "node:crypto"
 import { dataResponse, errorResponse } from "@/lib/api"
-import { LANGUAGES } from "@/lib/constants"
+import { LANGUAGES, getTranslationMode } from "@/lib/constants"
 import { demoAssets } from "@/lib/demo-data"
 import { isDemoMode } from "@/lib/demo-mode"
 import { computeAssetPriceCents } from "@/lib/pricing"
+import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit"
 import { createClient } from "@/lib/supabase/server"
 import { createAssetSchema } from "@/lib/validation"
 
+// Publish is the most expensive route in the system: it triggers a Docker
+// verification run (and, once a language is requested, an LLM translation).
+// 5/hour keeps a runaway loop from draining the Anthropic budget or the
+// worker's Docker capacity.
+const PUBLISH_LIMIT = 5
+const PUBLISH_WINDOW_MS = 60 * 60 * 1000
+
 export async function POST(request: Request) {
   if (isDemoMode()) {
+    const rateLimit = await checkRateLimit({
+      key: `assets:ip:${getClientIp(request)}`,
+      limit: PUBLISH_LIMIT,
+      windowMs: PUBLISH_WINDOW_MS,
+    })
+    if (!rateLimit.allowed) return rateLimitedResponse(rateLimit)
+
     const body = await request.json().catch(() => null)
     const parsed = createAssetSchema.safeParse(body)
 
@@ -43,6 +58,13 @@ export async function POST(request: Request) {
 
   if (!user) return errorResponse("Sign in first", 401, { code: "UNAUTHENTICATED" })
 
+  const rateLimit = await checkRateLimit({
+    key: `assets:user:${user.id}`,
+    limit: PUBLISH_LIMIT,
+    windowMs: PUBLISH_WINDOW_MS,
+  })
+  if (!rateLimit.allowed) return rateLimitedResponse(rateLimit)
+
   const body = await request.json().catch(() => null)
   const parsed = createAssetSchema.safeParse(body)
 
@@ -53,6 +75,23 @@ export async function POST(request: Request) {
   }
 
   const input = parsed.data
+
+  // Cap concurrent unverified assets per developer: each one holds a Docker
+  // verification slot, so an unbounded queue of "verifying" assets is a cost
+  // and capacity risk independent of the hourly rate limit above.
+  const { count: verifyingCount } = await supabase
+    .from("assets")
+    .select("id", { count: "exact", head: true })
+    .eq("developer_id", user.id)
+    .eq("status", "verifying")
+
+  if ((verifyingCount ?? 0) >= 3) {
+    return errorResponse(
+      "You have 3 assets still verifying. Wait for one to finish before publishing another.",
+      429,
+      { code: "TOO_MANY_PENDING_VERIFICATIONS" }
+    )
+  }
 
   // §7.2: content hash of the canonical source snapshot, anchored with the asset.
   const contentHash = createHash("sha256").update(input.source_code).digest("hex")
@@ -105,8 +144,15 @@ export async function POST(request: Request) {
     })
   }
 
+  // Unit economics: in on_demand mode only the source language is verified at
+  // publish (Docker run, no LLM call). Cross-language variants are created by
+  // POST /api/assets/[id]/variants when a buyer asks for them, so translation
+  // spend is incurred only where there is demand.
+  const publishLanguages =
+    getTranslationMode() === "eager" ? LANGUAGES : [input.source_language]
+
   const { error: variantsError } = await supabase.from("asset_variants").insert(
-    LANGUAGES.map((language) => ({
+    publishLanguages.map((language) => ({
       asset_id: asset.id,
       target_language: language,
       status: "queued",

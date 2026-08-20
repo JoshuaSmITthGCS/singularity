@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { createProcurementSchema } from "@/lib/validation"
 import { installationHasRepo } from "@/lib/github/octokit"
+import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit"
 import {
   createCheckoutSession,
   createPlanOnConnectedCompany,
@@ -13,8 +14,18 @@ import {
 } from "@/lib/whop/client"
 import { getAppUrl } from "@/lib/env"
 
+const PROCUREMENT_LIMIT = 20
+const PROCUREMENT_WINDOW_MS = 60 * 60 * 1000
+
 export async function POST(request: Request) {
   if (isDemoMode()) {
+    const rateLimit = await checkRateLimit({
+      key: `procurements:ip:${getClientIp(request)}`,
+      limit: PROCUREMENT_LIMIT,
+      windowMs: PROCUREMENT_WINDOW_MS,
+    })
+    if (!rateLimit.allowed) return rateLimitedResponse(rateLimit)
+
     const body = await request.json().catch(() => null)
     const parsed = createProcurementSchema.safeParse(body)
 
@@ -57,6 +68,13 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser()
 
   if (!user) return errorResponse("Sign in first", 401)
+
+  const rateLimit = await checkRateLimit({
+    key: `procurements:user:${user.id}`,
+    limit: PROCUREMENT_LIMIT,
+    windowMs: PROCUREMENT_WINDOW_MS,
+  })
+  if (!rateLimit.allowed) return rateLimitedResponse(rateLimit)
 
   const body = await request.json().catch(() => null)
   const parsed = createProcurementSchema.safeParse(body)

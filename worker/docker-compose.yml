@@ -1,0 +1,21 @@
+services:
+  worker:
+    build: .
+    image: singularity-worker
+    restart: always
+    env_file: .env
+    environment:
+      # Docker-outside-of-Docker (see Dockerfile + DEPLOY.md): this must match
+      # the host path on the right side of the volume mount below exactly.
+      WORKER_JOB_TMP_DIR: /var/singularity/tmp
+    volumes:
+      # Lets the worker (via dockerode) launch the 5 sandbox test containers
+      # as siblings on the host's own Docker daemon, rather than needing a
+      # nested Docker-in-Docker daemon inside this container.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Shared workspace directory: bind-mount paths the worker passes to the
+      # host daemon are resolved against the HOST filesystem, so the sandbox
+      # containers only see the right files if this exact path is real and
+      # shared on both sides — a private path inside just this container's
+      # filesystem would resolve to an empty/nonexistent directory on the host.
+      - /var/singularity/tmp:/var/singularity/tmp

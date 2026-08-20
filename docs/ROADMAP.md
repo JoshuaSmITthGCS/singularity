@@ -1,5 +1,10 @@
 # Singularity — Development Roadmap
 
+> **Superseded by [`MASTER_PLAN.md`](./MASTER_PLAN.md)**, which sets the
+> authoritative task order, acceptance criteria, and human-input gates.
+> This file is kept because the Master Plan references its phase-level
+> implementation notes (Phases 1–3 in particular).
+
 A prioritized, step-by-step plan for the work remaining after the MVP +
 TRD-alignment pass. Phases are ordered by **value/risk**: each one is shippable
 on its own and leaves the app in a working state. Infra-heavy items are last,

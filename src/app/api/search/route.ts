@@ -1,10 +1,18 @@
 import { dataResponse, errorResponse } from "@/lib/api"
 import { searchAssets } from "@/lib/marketplace/search"
+import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit"
 import { searchQuerySchema } from "@/lib/validation"
 
 // §8.1 GET /api/v1/search — structured filter + free-text marketplace search.
 // Array params repeat (?genre=game&genre=web); complexity/q/page are scalar.
 export async function GET(request: Request) {
+  const rateLimit = await checkRateLimit({
+    key: `search:ip:${getClientIp(request)}`,
+    limit: 60,
+    windowMs: 60 * 1000,
+  })
+  if (!rateLimit.allowed) return rateLimitedResponse(rateLimit)
+
   const url = new URL(request.url)
   const sp = url.searchParams
 
