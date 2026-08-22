@@ -13,9 +13,12 @@ ENV PATH="${PATH}:/root/.dotnet/tools"
 RUN dotnet new xunit -n TestProject && \
     rm -rf TestProject
 
-# Set up non-root user for test execution
-RUN useradd -m -u 1001 testrunner
-USER testrunner
+# Set up non-root user for test execution. worker/src/test-runner.ts
+# hardcodes every container to run as uid:gid 1000:1000 (overriding whatever
+# USER this Dockerfile sets), so the user created here must be at uid 1000,
+# not some other value — only create it if uid 1000 isn't already taken.
+RUN if ! id -u 1000 >/dev/null 2>&1; then useradd -m -u 1000 runner; fi
+USER 1000:1000
 
 # Default command
 CMD ["/bin/bash"]
