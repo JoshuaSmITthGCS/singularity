@@ -92,6 +92,23 @@ export async function isConnectedCompanyReady(companyId: string): Promise<boolea
   )
 }
 
+// Lightweight live connectivity check for /api/ready — confirms the API key
+// and platform company id actually authenticate against Whop, not just that
+// the env vars are present. Never throws; callers treat any failure as "not
+// connected" (a fine 401/404 here likely means the endpoint path in this file
+// still doesn't match the real API — see docs/PRODUCTION_SETUP.md §B3).
+export async function pingPlatformCompany(): Promise<boolean> {
+  try {
+    const company = await whopFetch<{ id?: string }>(
+      `/api/v2/companies/${getWhopPlatformCompanyId()}`,
+      { method: "GET" }
+    )
+    return Boolean(company?.id)
+  } catch {
+    return false
+  }
+}
+
 // --- Asset products + checkout ------------------------------------------
 
 // Create a product on the developer's connected company. Returns product id.

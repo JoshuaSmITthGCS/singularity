@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { fulfillProcurement } from "@/lib/procurements/fulfill"
 import {
   isPaymentSuccess,
-  readWhopSignature,
+  readWhopWebhookHeaders,
   verifyWhopSignature,
   type WhopWebhookEvent,
 } from "@/lib/whop/webhook"
@@ -11,9 +11,9 @@ import {
 // payment back to its procurement (via metadata.procurement_id), then deliver.
 export async function POST(request: Request) {
   const rawBody = await request.text()
-  const signature = readWhopSignature(request.headers)
+  const headers = readWhopWebhookHeaders(request.headers)
 
-  if (!verifyWhopSignature(rawBody, signature)) {
+  if (!verifyWhopSignature(rawBody, headers)) {
     return new Response("Invalid signature", { status: 401 })
   }
 

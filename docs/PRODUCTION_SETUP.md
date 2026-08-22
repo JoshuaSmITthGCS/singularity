@@ -70,21 +70,48 @@ SUPABASE_SERVICE_ROLE_KEY       🔴
 ## A2. The translation worker host  ⚠️ THE HARD BLOCKER
 
 The worker is a long‑running Node process that calls Docker to run the 5 language
-sandbox images. **Netlify cannot run it** (serverless). It needs a host with Docker.
+sandbox images (`worker/src/test-runner.ts` talks to the local Docker socket via
+`dockerode`). **Netlify cannot run it** (serverless).
 
-**Decision required from you — pick one:** 🟢
-- **Fly.io** (recommended: cheap, Docker‑native, persistent machine) — https://fly.io
-- **Railway** — https://railway.app
-- A plain **VM** you control (EC2 / DigitalOcean droplet / Hetzner) with Docker installed.
+**Decision (made for you): a plain VM with Docker installed, not Fly.io/Railway.**
+Those platforms boot each app straight from an OCI image into a microVM with
+**no Docker daemon inside** — there's nothing for `dockerode` to talk to, and
+they don't support the nested Docker-in-Docker this worker needs. A VM you
+control runs Docker natively, which is simpler and actually works.
 
-Once you tell Claude which host, Claude will create the missing deploy artifacts
-(a `worker/Dockerfile` that builds the worker **and** has the Docker images
-available, plus the host config + a restart/supervisor setup). **This file does
-not exist yet — Claude writes it after you choose.**
+**Recommended: a DigitalOcean droplet using their "Docker" 1‑click Marketplace
+image** (Docker pre-installed, no manual install step):
+1. Go to https://cloud.digitalocean.com/droplets/new
+2. **Choose an image** → tab **Marketplace** → search **"Docker"** → select
+   **Docker on Ubuntu**.
+3. **Size**: a `Basic` droplet, `Regular`, **2 GB RAM / 1 vCPU** is enough to start
+   (bump to 4 GB if translations queue up).
+4. **Region**: closest to your Supabase region (`us-east-1` → pick **New York**).
+5. **Authentication**: SSH key (upload yours, or use DigitalOcean's "create new
+   key" flow) — password auth works too but SSH keys are safer.
+6. **Create Droplet**. Note the public IP it gives you.
 
-**What you'll need on that host (Claude will wire it, you provide the values):**
+Then SSH in (`ssh root@<droplet-ip>`) and run the bootstrap script Claude wrote
+(`worker/deploy/setup.sh`) — it installs Node/pnpm if missing (Docker's already
+there from the Marketplace image), clones the repo, builds the 5 sandbox
+images, and installs a systemd service:
 ```
-NEXT_PUBLIC_SUPABASE_URL     (same as A1)
+curl -fsSL https://raw.githubusercontent.com/JoshuaSmITthGCS/singularity/main/worker/deploy/setup.sh | bash
+```
+Then edit `/etc/singularity-worker.env` with real secrets and start it:
+```
+systemctl start singularity-worker
+journalctl -u singularity-worker -f   # watch it pick up jobs
+```
+
+(Any VM works the same way — EC2, Hetzner, a Lightsail instance — as long as
+Docker is installed and you run `worker/deploy/setup.sh`. The DigitalOcean path
+above is just the fewest clicks.)
+
+**Env vars** (`worker/deploy/singularity-worker.env.example` has the template,
+Supabase URL pre-filled from your project ref):
+```
+NEXT_PUBLIC_SUPABASE_URL=https://kjzbjsldezkdhtifmeiu.supabase.co   (already filled in)
 SUPABASE_SERVICE_ROLE_KEY    (same as A1)   🔴
 ANTHROPIC_API_KEY            (from A's Anthropic step below)   🔴
 ANTHROPIC_MODEL=claude-opus-4-8   (optional)
@@ -202,24 +229,28 @@ WHOP_PLATFORM_COMPANY_ID   🟢
 
 **🟢 PASTE TO CLAUDE:** your `biz_...` platform company id.
 
-## B2. Confirm the webhook signature scheme  ← needs doc excerpt
+## B2. Confirm the webhook signature scheme  ← still needs doc confirmation
 
-The current verifier (`src/lib/whop/webhook.ts`) computes
-`HMAC‑SHA256(rawBody, WHOP_WEBHOOK_SECRET)` and looks for the signature in
-`x-whop-signature` / `whop-signature` / `x-whop-webhook-signature`, accepting either
-a bare hex digest or `sha256=<digest>`.
+**Update:** `src/lib/whop/webhook.ts` now implements the **Standard Webhooks**
+scheme (`webhook-id` / `webhook-timestamp` / `webhook-signature` headers,
+signing `${id}.${timestamp}.${body}` with HMAC‑SHA256, base64-encoded, secret
+formatted `whsec_<base64>`), with replay-window rejection and a legacy bare-HMAC
+fallback kept for safety. This was based on two independent web-search results
+naming Whop specifically alongside "Standard Webhooks" — this sandbox's network
+egress to `whop.com`/`docs.whop.com` is blocked, so it could not be confirmed
+directly against the primary docs.
 
-**Go to Whop's webhook docs** and find the section on **verifying webhook
-signatures**. 🟢 **PASTE TO CLAUDE** the part that states:
-1. the exact **header name** Whop sends the signature in,
-2. what is **signed** — just the raw body, or `${timestamp}.${body}` (a Stripe‑style
-   `t=...,v1=...` scheme), and
-3. the **digest encoding** (hex or base64).
+**Before going live:** open your Whop dashboard's webhook docs yourself and
+confirm the header names + signing scheme match what's above. 🟢 **PASTE TO
+CLAUDE** the exact text if anything differs and it'll be corrected in one place.
 
-Claude will adjust `verifyWhopSignature` / `readWhopSignature` to match exactly.
-(If it's a timestamped scheme, Claude will also add replay protection.)
+## B3. Confirm the REST endpoints + field names  ← needs doc excerpt (unchanged — see note)
 
-## B3. Confirm the REST endpoints + field names  ← needs doc excerpt
+Same egress restriction as B2 applied here: search results gave conflicting
+signals (one referencing `/api/v1`, another `/api-reference/v2/...`) not
+reliable enough to safely rewrite `client.ts` against — a wrong guess here
+would fail silently until a real purchase, so this was left exactly as it was
+rather than "fixed" on unverified information. Still needs your doc excerpts.
 
 `src/lib/whop/client.ts` uses these calls. Each line is what to confirm in the docs:
 
@@ -270,7 +301,8 @@ SUPABASE_PROJECT_URL  = https://__________.supabase.co
 SUPABASE_PROJECT_REF  = __________
 
 # A2 Worker host
-WORKER_HOST           = fly | railway | vm   (pick one)
+WORKER_HOST           = VM (droplet/EC2/etc — see worker/deploy/setup.sh)
+WORKER_HOST_IP        = __________
 PRODUCTION_DOMAIN     = https://__________
 
 # A3 GitHub App

@@ -1,0 +1,17 @@
+[Unit]
+Description=Singularity translation worker
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/singularity
+EnvironmentFile=/etc/singularity-worker.env
+ExecStart=/usr/bin/pnpm worker
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target
