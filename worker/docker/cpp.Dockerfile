@@ -22,9 +22,18 @@ RUN apt-get update && apt-get install -y \
 # /usr/src/gtest as a compatibility symlink to its googletest/ subdir — but
 # there's no equivalent symlink for the googlemock/ subdir), so build from
 # the real shared root rather than the legacy split gtest/gmock paths.
+#
+# The generated CMakeLists.txt (worker/src/deps.ts) links this installed copy
+# through CMake's built-in FindGTest module rather than fetching googletest per
+# job: the install stage is time-boxed and the test stage has no network.
 RUN cmake -S /usr/src/googletest -B /usr/src/googletest/build && \
     cmake --build /usr/src/googletest/build && \
     find /usr/src/googletest/build -name "*.a" -exec cp {} /usr/lib \;
+
+# CMake writes to $HOME/.cmake when it can. The container runs as a uid this
+# image does not choose (see below), so point HOME somewhere any uid can write
+# rather than guessing at a home directory.
+ENV HOME=/tmp
 
 # Set up non-root user for test execution. worker/src/test-runner.ts
 # hardcodes every container to run as uid:gid 1000:1000 (overriding whatever

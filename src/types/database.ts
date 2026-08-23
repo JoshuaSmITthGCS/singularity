@@ -344,6 +344,14 @@ export type Database = {
         }
         Returns: AssetVariant[]
       }
+      record_procurement_settlement: {
+        Args: {
+          p_asset_id: string
+          p_developer_id: string
+          p_developer_share_cents: number
+        }
+        Returns: undefined
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

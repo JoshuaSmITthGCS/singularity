@@ -44,11 +44,12 @@ Copy `.env.local.example` → `.env.local`, fill everything in, and set:
 
 ```bash
 NEXT_PUBLIC_REAL_BACKEND=true
+SINGULARITY_REAL_BACKEND=true
 NEXT_PUBLIC_APP_URL=https://<your-domain>
 ```
 
-(Leave `NEXT_PUBLIC_REAL_BACKEND` unset to keep running on demo fixtures with no
-backend.)
+Both switches are required — the client-side one alone will not leave demo mode.
+Leave either unset to keep running on demo fixtures with no backend.
 
 ## How it works once live
 
