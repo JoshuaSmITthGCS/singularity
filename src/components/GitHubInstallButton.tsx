@@ -37,7 +37,7 @@ export function GitHubInstallButton() {
         <PlugZap size={16} aria-hidden />
         {demoMode ? "Demo GitHub App" : loading ? "Opening GitHub" : "Install GitHub App"}
       </Button>
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--fail)]">{error}</p> : null}
     </div>
   )
 }

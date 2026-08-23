@@ -35,7 +35,7 @@ export function WhopPayoutsButton({ className }: { className?: string }) {
         Manage payouts
         <ExternalLink size={14} aria-hidden />
       </Button>
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--fail)]">{error}</p> : null}
     </div>
   )
 }

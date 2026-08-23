@@ -109,12 +109,12 @@ function SellerDemo() {
   }
 
   return (
-    <section className="rounded-lg border border-border bg-panel p-6">
-      <div className="flex items-center gap-2 text-primary">
+    <section className="rounded border border-rule bg-surface p-5">
+      <div className="flex items-center gap-2 text-accent">
         <Sparkles size={18} aria-hidden />
-        <h2 className="text-lg font-semibold text-foreground">Try it as a seller</h2>
+        <h2 className="display text-lg text-ink">Try it as a seller</h2>
       </div>
-      <p className="mt-2 text-sm text-muted-foreground">
+      <p className="mt-2 text-sm text-ink-3">
         Pick a sample snippet and publish it for real — Claude translates it into every supported
         language, then each variant runs in an isolated Docker sandbox. Nothing here is
         pre-recorded; you&rsquo;re watching the actual verification pipeline.
@@ -129,8 +129,8 @@ function SellerDemo() {
             disabled={loading}
             className={`rounded-md border px-3 py-1.5 text-sm transition ${
               s.id === snippetId
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border text-muted-foreground hover:border-[#aac6bb]"
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-rule text-ink-3 hover:border-[#aac6bb]"
             }`}
           >
             {s.title}
@@ -138,7 +138,12 @@ function SellerDemo() {
         ))}
       </div>
 
-      <pre className="mt-4 max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs leading-5">
+      <pre
+        tabIndex={0}
+        role="region"
+        aria-label="Sample source"
+        className="surface-dark mt-4 max-h-64 overflow-auto rounded border border-rule bg-code p-3 text-xs leading-5 text-[#e8e8e5]"
+      >
         <code>{snippet.source_code}</code>
       </pre>
 
@@ -147,11 +152,11 @@ function SellerDemo() {
         {loading ? "Running the real pipeline…" : "Publish & watch it verify"}
       </Button>
 
-      {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+      {error && <p className="mt-3 text-sm text-[var(--fail)]">{error}</p>}
 
       {status && (
-        <div className="mt-5 space-y-3 border-t border-border pt-4">
-          <p className="text-xs text-muted-foreground">
+        <div className="mt-5 space-y-3 border-t border-rule pt-4">
+          <p className="text-xs text-ink-3">
             Translating {LANGUAGE_LABEL[status.asset.source_language]} source into every target
             language — this typically takes 1–3 minutes.
           </p>
@@ -159,10 +164,10 @@ function SellerDemo() {
             {status.variants.map((v) => (
               <div
                 key={v.target_language}
-                className="flex items-center justify-between rounded-md border border-border px-3 py-2"
+                className="flex items-center justify-between rounded-md border border-rule px-3 py-2"
               >
                 <LanguageBadge language={v.target_language} status={v.status} />
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-ink-3">
                   {STATUS_LABEL[v.status]}
                   {v.status === "passed" && v.tests_total != null
                     ? ` · ${v.tests_passed}/${v.tests_total} tests`
@@ -172,7 +177,7 @@ function SellerDemo() {
             ))}
           </div>
           {status.asset.status === "published" && (
-            <p className="flex items-center gap-1.5 text-sm text-[var(--success)]">
+            <p className="flex items-center gap-1.5 text-sm text-[var(--pass)]">
               <CheckCircle2 size={16} aria-hidden />
               Published — verified and live in the marketplace.
             </p>
@@ -245,20 +250,20 @@ function BuyerDemo() {
   }
 
   return (
-    <section className="rounded-lg border border-border bg-panel p-6">
-      <div className="flex items-center gap-2 text-primary">
+    <section className="rounded border border-rule bg-surface p-5">
+      <div className="flex items-center gap-2 text-accent">
         <ShoppingCart size={18} aria-hidden />
-        <h2 className="text-lg font-semibold text-foreground">Try it as a buyer</h2>
+        <h2 className="display text-lg text-ink">Try it as a buyer</h2>
       </div>
-      <p className="mt-2 text-sm text-muted-foreground">
+      <p className="mt-2 text-sm text-ink-3">
         This is a walkthrough, not a real charge — no card, no Whop checkout. It shows exactly
         what a buyer receives after purchase: real verified code, delivered instantly.
       </p>
 
-      {assets === null && <p className="mt-4 text-sm text-muted-foreground">Loading…</p>}
+      {assets === null && <p className="mt-4 text-sm text-ink-3">Loading…</p>}
 
       {assets?.length === 0 && (
-        <p className="mt-4 text-sm text-muted-foreground">
+        <p className="mt-4 text-sm text-ink-3">
           No verified demo assets yet — run the seller demo on the left first, then come back here
           once it&rsquo;s published.
         </p>
@@ -266,13 +271,13 @@ function BuyerDemo() {
 
       <div className="mt-4 grid gap-3">
         {assets?.map((asset) => (
-          <div key={asset.id} className="rounded-md border border-border p-3">
+          <div key={asset.id} className="rounded-md border border-rule p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-medium">{asset.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{asset.short_description}</p>
+                <p className="mt-1 text-sm text-ink-3">{asset.short_description}</p>
               </div>
-              <Badge tone="info">{formatMoney(asset.price_cents)}</Badge>
+              <Badge className="mono tabular">{formatMoney(asset.price_cents)}</Badge>
             </div>
             <Button
               type="button"
@@ -289,18 +294,23 @@ function BuyerDemo() {
         ))}
       </div>
 
-      {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+      {error && <p className="mt-3 text-sm text-[var(--fail)]">{error}</p>}
 
       {selected && reveal && (
-        <div className="mt-5 space-y-2 border-t border-border pt-4">
-          <p className="flex items-center gap-1.5 text-sm text-[var(--success)]">
+        <div className="mt-5 space-y-2 border-t border-rule pt-4">
+          <p className="flex items-center gap-1.5 text-sm text-[var(--pass)]">
             <CheckCircle2 size={16} aria-hidden />
             Delivered — this is the real verified code for {selected.title}.
           </p>
-          <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs leading-5">
+          <pre
+            tabIndex={0}
+            role="region"
+            aria-label="Delivered code"
+            className="surface-dark max-h-64 overflow-auto rounded border border-rule bg-code p-3 text-xs leading-5 text-[#e8e8e5]"
+          >
             <code>{reveal.code}</code>
           </pre>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-ink-3">
             A real purchase delivers this via GitHub PR or direct download, and splits payment
             70/25/5 between developer, platform, and referral reserve through Whop.
           </p>
