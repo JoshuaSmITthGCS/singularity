@@ -91,6 +91,100 @@ describe('pickTier', () => {
 })
 `,
   },
+  {
+    id: "grid-snap",
+    title: "Grid Snap",
+    short_description: "Snaps a world position to the nearest grid cell.",
+    summary:
+      "Rounds a position to the nearest multiple of a cell size, in both axes — the kind of small math utility every tile-based or snap-to-grid system leans on.",
+    source_language: "typescript",
+    complexity: "low",
+    source_code: `export function snapToGrid(x: number, y: number, cellSize: number) {
+  return {
+    x: Math.round(x / cellSize) * cellSize,
+    y: Math.round(y / cellSize) * cellSize,
+  }
+}
+`,
+    test_code: `import { describe, expect, it } from 'vitest'
+import { snapToGrid } from './solution'
+
+describe('snapToGrid', () => {
+  it('snaps to the nearest cell', () => {
+    expect(snapToGrid(12, 12, 10)).toEqual({ x: 10, y: 10 })
+    expect(snapToGrid(16, 4, 10)).toEqual({ x: 20, y: 0 })
+  })
+
+  it('leaves an already-aligned position unchanged', () => {
+    expect(snapToGrid(30, 40, 10)).toEqual({ x: 30, y: 40 })
+  })
+})
+`,
+  },
+  {
+    id: "health-regen",
+    title: "Health Regeneration",
+    short_description: "Clamps and regenerates health over elapsed time.",
+    summary:
+      "Applies a regeneration rate to a health value over a time delta, clamped to a max — a common building block for stamina, mana, and health-regen systems.",
+    source_language: "javascript",
+    complexity: "low",
+    source_code: `export function regenerate(current, max, ratePerSecond, deltaSeconds) {
+  const next = current + ratePerSecond * deltaSeconds
+  return Math.min(max, Math.max(0, next))
+}
+`,
+    test_code: `import { describe, expect, it } from 'vitest'
+import { regenerate } from './solution.js'
+
+describe('regenerate', () => {
+  it('regenerates over time', () => {
+    expect(regenerate(50, 100, 10, 2)).toBe(70)
+  })
+
+  it('clamps to the max', () => {
+    expect(regenerate(95, 100, 10, 2)).toBe(100)
+  })
+
+  it('never goes below zero', () => {
+    expect(regenerate(5, 100, -10, 2)).toBe(0)
+  })
+})
+`,
+  },
+  {
+    id: "damage-falloff",
+    title: "Damage Falloff",
+    short_description: "Scales damage down as distance from the source increases.",
+    summary:
+      "Linear damage falloff from a blast or hitscan source — full damage at the origin, zero at or beyond the max radius. A small, deterministic formula that's easy to verify translates correctly.",
+    source_language: "typescript",
+    complexity: "low",
+    source_code: `export function damageAtDistance(baseDamage: number, distance: number, maxRadius: number) {
+  if (distance >= maxRadius) return 0
+  const falloff = 1 - distance / maxRadius
+  return Math.round(baseDamage * falloff)
+}
+`,
+    test_code: `import { describe, expect, it } from 'vitest'
+import { damageAtDistance } from './solution'
+
+describe('damageAtDistance', () => {
+  it('deals full damage at the origin', () => {
+    expect(damageAtDistance(100, 0, 10)).toBe(100)
+  })
+
+  it('deals zero damage beyond the radius', () => {
+    expect(damageAtDistance(100, 10, 10)).toBe(0)
+    expect(damageAtDistance(100, 20, 10)).toBe(0)
+  })
+
+  it('scales linearly in between', () => {
+    expect(damageAtDistance(100, 5, 10)).toBe(50)
+  })
+})
+`,
+  },
 ]
 
 export function findDemoSnippet(id: string): DemoSnippet | undefined {

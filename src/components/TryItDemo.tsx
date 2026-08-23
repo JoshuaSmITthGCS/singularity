@@ -120,7 +120,7 @@ function SellerDemo() {
         pre-recorded; you&rsquo;re watching the actual verification pipeline.
       </p>
 
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {DEMO_SNIPPETS.map((s) => (
           <button
             key={s.id}
