@@ -25,8 +25,12 @@ enable_signup = true
 
 [auth.external.github]
 enabled = true
-client_id = "env(GITHUB_APP_CLIENT_ID)"
-secret = "env(GITHUB_APP_CLIENT_SECRET)"
+# Dedicated to the plain GitHub OAuth App used for login (CLAUDE.md §A1) —
+# deliberately NOT GITHUB_APP_CLIENT_ID/SECRET, which name the separate
+# GitHub App used for repo access + PR delivery (§A3). Reusing those names
+# here would collide with that app's Netlify env vars.
+client_id = "env(SUPABASE_AUTH_GITHUB_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_GITHUB_CLIENT_SECRET)"
 redirect_uri = "http://localhost:54321/auth/v1/callback"
 
 [storage]
