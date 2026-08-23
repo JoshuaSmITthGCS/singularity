@@ -17,15 +17,14 @@ RUN apt-get update && apt-get install -y \
     ninja-build \
     && rm -rf /var/lib/apt/lists/*
 
-# Build and install Google Test
-RUN cd /usr/src/gtest && \
-    cmake CMakeLists.txt && \
-    make && \
-    cp lib/*.a /usr/lib && \
-    cd /usr/src/gmock && \
-    cmake CMakeLists.txt && \
-    make && \
-    cp lib/*.a /usr/lib
+# Build and install Google Test + Google Mock. Ubuntu's libgtest-dev/
+# libgmock-dev packages unpack sources under /usr/src/googletest (with
+# /usr/src/gtest as a compatibility symlink to its googletest/ subdir — but
+# there's no equivalent symlink for the googlemock/ subdir), so build from
+# the real shared root rather than the legacy split gtest/gmock paths.
+RUN cmake -S /usr/src/googletest -B /usr/src/googletest/build && \
+    cmake --build /usr/src/googletest/build && \
+    find /usr/src/googletest/build -name "*.a" -exec cp {} /usr/lib \;
 
 # Set up non-root user for test execution. worker/src/test-runner.ts
 # hardcodes every container to run as uid:gid 1000:1000 (overriding whatever
