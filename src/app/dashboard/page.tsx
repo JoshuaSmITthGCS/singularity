@@ -157,7 +157,7 @@ export default async function DashboardPage({
                 : "Required for PR delivery"
             }
             icon={<PlugZap size={14} aria-hidden />}
-            action={<GitHubInstallButton />}
+            action={<GitHubInstallButton demoMode={demoMode} />}
           />
         </section>
 

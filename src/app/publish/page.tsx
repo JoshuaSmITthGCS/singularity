@@ -38,7 +38,7 @@ export default async function PublishPage() {
           description="Sign in with GitHub to submit code for verification and listing."
         />
         <Page className="max-w-md">
-          <AuthButton signedIn={false} />
+          <AuthButton signedIn={false} demoMode={demoMode} />
         </Page>
       </main>
     )
@@ -56,7 +56,7 @@ export default async function PublishPage() {
         }
       />
       <Page className="max-w-4xl">
-        <PublishForm />
+        <PublishForm demoMode={demoMode} />
       </Page>
     </main>
   )

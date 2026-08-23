@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { LANGUAGE_LABEL } from "@/lib/constants"
-import { isDemoMode } from "@/lib/demo-mode"
 import type { DeliveryMethod, MarketplaceVariant } from "@/types/database"
 
 type PurchaseResult = {
@@ -24,14 +23,17 @@ type PurchaseResult = {
   } | null
 }
 
+// demoMode comes from the server — see AuthButton.tsx for why this can't
+// safely call isDemoMode() itself from a client component.
 export function PurchaseForm({
   assetId,
   variants,
+  demoMode,
 }: {
   assetId: string
   variants: MarketplaceVariant[]
+  demoMode: boolean
 }) {
-  const demoMode = isDemoMode()
   const passedVariants = variants.filter((variant) => variant.status === "passed")
   const [variantId, setVariantId] = useState(passedVariants[0]?.id ?? "")
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("download")

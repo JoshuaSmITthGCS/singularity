@@ -5,6 +5,7 @@ import { PurchaseForm } from "@/components/PurchaseForm"
 import { VerificationMatrix } from "@/components/Verification"
 import { Badge } from "@/components/ui/badge"
 import { LANGUAGE_LABEL, LANGUAGE_ENGINE_TAGS } from "@/lib/constants"
+import { isDemoMode } from "@/lib/demo-mode"
 import { getMarketplaceAsset } from "@/lib/marketplace/queries"
 import { formatMoney } from "@/lib/utils"
 
@@ -17,6 +18,7 @@ export default async function AssetDetailPage({
 }) {
   const { assetId } = await params
   const asset = await getMarketplaceAsset(assetId)
+  const demoMode = isDemoMode()
 
   if (!asset) notFound()
 
@@ -114,7 +116,7 @@ export default async function AssetDetailPage({
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-6">
-          <PurchaseForm assetId={asset.id} variants={asset.variants} />
+          <PurchaseForm assetId={asset.id} variants={asset.variants} demoMode={demoMode} />
 
           <div className="rounded border border-rule bg-surface p-3.5">
             <h2 className="tag text-ink-4">What you get</h2>

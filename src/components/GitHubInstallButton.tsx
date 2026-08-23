@@ -3,10 +3,10 @@
 import { PlugZap } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { isDemoMode } from "@/lib/demo-mode"
 
-export function GitHubInstallButton() {
-  const demoMode = isDemoMode()
+// demoMode comes from the server — see AuthButton.tsx for why this can't
+// safely call isDemoMode() itself from a client component.
+export function GitHubInstallButton({ demoMode }: { demoMode: boolean }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

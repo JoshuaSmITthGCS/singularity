@@ -116,7 +116,7 @@ export function SideNav({ signedIn, demoMode }: { signedIn: boolean; demoMode: b
               </span>
             </p>
           ) : null}
-          <AuthButton signedIn={signedIn} />
+          <AuthButton signedIn={signedIn} demoMode={demoMode} />
         </div>
       </nav>
     </>

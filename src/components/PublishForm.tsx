@@ -17,7 +17,6 @@ import {
 } from "@/lib/constants"
 import { COMPLEXITY_LEVELS } from "@/lib/taxonomy"
 import { computeAssetPriceCents } from "@/lib/pricing"
-import { isDemoMode } from "@/lib/demo-mode"
 import { splitTags } from "@/lib/utils"
 import type { Complexity, Language } from "@/types/database"
 
@@ -37,9 +36,10 @@ const stepLabel: Record<Step, string> = {
   confirm: "Verify",
 }
 
-export function PublishForm() {
+// demoMode comes from the server — see AuthButton.tsx for why this can't
+// safely call isDemoMode() itself from a client component.
+export function PublishForm({ demoMode }: { demoMode: boolean }) {
   const router = useRouter()
-  const demoMode = isDemoMode()
   const [step, setStep] = useState<Step>("source")
   const [mode, setMode] = useState<SourceMode>("paste")
   const [language, setLanguage] = useState<Language>("typescript")
