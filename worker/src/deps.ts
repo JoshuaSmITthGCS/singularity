@@ -142,29 +142,20 @@ function defaultCsProj() {
 
 function defaultCMake() {
   return `cmake_minimum_required(VERSION 3.14)
-project(SingularityAsset)
+project(SingularityAsset CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Google Test
-include(FetchContent)
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
-)
-FetchContent_MakeAvailable(googletest)
+# GoogleTest is built into the sandbox image, so link the installed copy instead
+# of fetching it: the install stage is time-boxed and the test stage has no
+# network at all.
+find_package(GTest REQUIRED)
 
-enable_testing()
-
-# Main library
 add_library(solution solution.cpp)
+target_include_directories(solution PUBLIC \${CMAKE_CURRENT_SOURCE_DIR})
 
-# Tests
 add_executable(tests tests.cpp)
-target_link_libraries(tests solution GTest::gtest_main)
-
-include(GoogleTest)
-gtest_discover_tests(tests)
+target_link_libraries(tests PRIVATE solution GTest::gtest GTest::gtest_main)
 `
 }

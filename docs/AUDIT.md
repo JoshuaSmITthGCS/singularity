@@ -39,6 +39,13 @@ Findings are ordered by impact on the thesis, not by line count.
 
 ## 1. Critical — C# and C++ variants can never be sold
 
+> **Status: fixed** (commit following this audit). Report parsers for `.trx` and
+> GoogleTest JSON added in `worker/src/test-report.ts`, the null-folding status
+> guard corrected, the install-stage gate and both Dockerfile uids repaired, and
+> the whole path covered by `worker/src/test-report.test.ts`. The Docker images
+> themselves have not been rebuilt and run — see §12. The original finding is
+> kept below as the record.
+
 **Where:** `worker/src/test-runner.ts:74`, with `parseReport()` at
 `worker/src/test-runner.ts:132`.
 
@@ -332,8 +339,8 @@ market research answers, because it bounds supply before demand ever matters.
 
 ## 11. What to fix, in order
 
-1. Parse `.trx` and gtest JSON; stop treating `null` as failure; align the C#/C++
-   image uids. **Two of five languages are dead until this lands.**
+1. ~~Parse `.trx` and gtest JSON; stop treating `null` as failure; align the
+   C#/C++ image uids.~~ **Done** — see §1 and §12.
 2. Give verification an oracle independent of the translation, or restate the
    badge honestly.
 3. Re-derive the pricing formula against real comparables and against measured
@@ -345,3 +352,56 @@ market research answers, because it bounds supply before demand ever matters.
 Findings 1, 4, 5, 6, 7, and 8 are mechanical and small. Findings 2 and 3 are
 design questions that should be settled before the next fundraising conversation,
 because they are what a technical diligence reviewer will probe first.
+
+
+---
+
+## 12. Follow-up — what the C#/C++ fix changed, and what is still unverified
+
+Finding 1 turned out to have four independent causes stacked on the same path,
+all of which had to go for either language to produce a sellable variant.
+
+| Cause | Fix |
+| --- | --- |
+| No parser for `.trx` or GoogleTest JSON | `worker/src/test-report.ts` — parsers for both, plus the existing vitest and surefire readers, extracted into one tested module |
+| `null === 0` folded "unreadable" into "failed" | `resolveTestStatus()` checks the null case explicitly and reports it as unverified rather than as a test failure |
+| Install stage skipped unless the model returned a manifest, so C#/C++ reached the test stage with nothing built | `needsInstallStage()` returns true for java, csharp and cpp unconditionally — `writeJobFiles()` always writes a build file for all three |
+| C#/C++ images create uid 1001 while the runner forces `1000:1000` | both Dockerfiles now own uid 1000 with a writable `HOME` |
+
+Three supporting changes were required to make those land:
+
+- **C# gets a writable workspace during the test stage**, as Java already did —
+  `dotnet test` compiles, which a read-only bind mount cannot support. Network
+  stays off for every test stage; that is the boundary that actually matters.
+- **The install timeout moved from 30s to 180s.** A cold NuGet restore, Maven
+  `go-offline`, or CMake configure-and-build does not fit in 30 seconds, and the
+  timeout surfaced as an opaque variant failure. C#'s test stage also gets 120s
+  because it compiles; every other language keeps the tighter 60s bound on
+  runaway code.
+- **The generated `CMakeLists.txt` links the image's GoogleTest** via
+  `find_package` instead of downloading it through `FetchContent` on every job.
+  The old template could not have finished inside the install timeout and
+  depended on network reachability at configure time.
+
+**Behaviour change worth noting:** a Java run that produces no surefire XML at
+all now reports unverified instead of passing with a zero count. That is the
+correct reading — no report means no proof — but it is stricter than before.
+
+**Not verified.** This environment has no Docker daemon, so the two rebuilt
+images have not been built or executed. The report-parsing and status logic is
+covered by 14 unit tests, including two that assert a green C#/C++ run now
+resolves to `passed`, and all five new tests were confirmed to fail against the
+pre-fix logic. The Dockerfile changes and the `dotnet test` / CMake command
+lines are reasoned, not run. **Run `pnpm run worker:build-images` and put one
+real C# and one real C++ asset through the worker before trusting this.**
+
+One pre-existing fragility surfaces more sharply now that C#/C++ genuinely write
+during their install stage: `runTests()` creates the job directory with
+`fs.mkdtemp()`, so it is owned by whatever uid the worker process runs as, while
+the container writes to it as uid 1000. If the worker does not run as uid 1000
+(or root), the bind mount is not writable by the sandbox. This affects Java
+equally and is not introduced here, but it is the next thing to check if a build
+stage fails with permission errors.
+
+Findings 2–8 are untouched. Finding 2 in particular still stands: the C# and C++
+badges now work, but what they attest to is unchanged.

@@ -17,7 +17,9 @@ RUN apt-get update && apt-get install -y \
     ninja-build \
     && rm -rf /var/lib/apt/lists/*
 
-# Build and install Google Test
+# Build and install Google Test. The generated CMakeLists.txt links this copy
+# via find_package rather than fetching googletest over the network, so the
+# install stage stays fast and the test stage needs no network at all.
 RUN cd /usr/src/gtest && \
     cmake CMakeLists.txt && \
     make && \
@@ -27,9 +29,17 @@ RUN cd /usr/src/gtest && \
     make && \
     cp lib/*.a /usr/lib
 
-# Set up non-root user for test execution
-RUN useradd -m -u 1001 testrunner
-USER testrunner
+# The worker starts every sandbox as 1000:1000 (worker/src/test-runner.ts), so
+# the image must own that uid — otherwise the build stage runs as a uid with no
+# home directory and no ownership of the workspace.
+RUN if getent passwd 1000 >/dev/null; then \
+      userdel -r "$(getent passwd 1000 | cut -d: -f1)" 2>/dev/null || true; \
+    fi \
+    && useradd -m -u 1000 runner
+
+ENV HOME=/home/runner
+
+USER runner
 
 # Default command
 CMD ["/bin/bash"]
