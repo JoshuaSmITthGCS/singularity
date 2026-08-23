@@ -101,6 +101,18 @@ the C# install stage will likely still fail.
 treat `parsed.failed === null` as "unknown" rather than folding it into failure,
 and align the two Dockerfiles on uid 1000.
 
+**Update — the uid problem was worse than this audit found.** Work landed on
+`main` in parallel (`f0e983e`, `fd4151e`, `9b87b3e`, `77351d4`) shows the
+mismatch broke image *builds*, not just runtime: `node:20-alpine` already ships
+a uid-1000 `node` user, so `adduser -D -u 1000 runner` failed outright and the
+node and typescript images never built at all. The C++ image also built
+GoogleMock from `/usr/src/gmock`, a path Ubuntu does not ship. So
+`pnpm run worker:build-images` was failing at the first image and **no language
+was verifiable**, not two. Those commits fix all five images by creating the
+uid-1000 user only when it is free and running `USER 1000:1000` explicitly;
+that pattern is more robust than the `userdel` approach this branch first used
+and supersedes it.
+
 ---
 
 ## 2. Critical — "verified translation" does not verify what the pitch claims
