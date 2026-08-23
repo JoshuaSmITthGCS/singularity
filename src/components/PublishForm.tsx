@@ -206,54 +206,60 @@ export function PublishForm() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {steps.map((item, index) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => setStep(item)}
-            className={`h-16 rounded-lg border px-3 text-left transition ${
-              index <= currentStepIndex ? "border-primary bg-[var(--primary-soft)]" : "border-border bg-panel"
-            }`}
-            aria-current={step === item ? "step" : undefined}
-          >
-            <span className="block text-xs text-muted-foreground">0{index + 1}</span>
-            <span className="block text-sm font-medium">{stepLabel[item]}</span>
-          </button>
-        ))}
-      </div>
+      <ol className="flex flex-wrap items-center gap-1 rounded border border-rule bg-surface p-1">
+        {steps.map((item, index) => {
+          const done = index < currentStepIndex
+          const current = step === item
+
+          return (
+            <li key={item} className="flex-1">
+              <button
+                type="button"
+                onClick={() => setStep(item)}
+                aria-current={current ? "step" : undefined}
+                className={`flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left transition-colors ${
+                  current
+                    ? "bg-[var(--accent-soft)] text-accent"
+                    : done
+                      ? "text-ink-2 hover:bg-sunken"
+                      : "text-ink-4 hover:bg-sunken"
+                }`}
+              >
+                <span
+                  className={`mono flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.625rem] ${
+                    current
+                      ? "bg-accent text-white"
+                      : done
+                        ? "bg-[var(--pass)] text-white"
+                        : "border border-rule-strong text-ink-4"
+                  }`}
+                >
+                  {done ? "✓" : index + 1}
+                </span>
+                <span className="text-xs font-medium">{stepLabel[item]}</span>
+              </button>
+            </li>
+          )
+        })}
+      </ol>
 
       {step === "source" ? (
         <section className="space-y-5">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            <ModeOption
+              active={mode === "paste"}
               onClick={() => setMode("paste")}
-              aria-pressed={mode === "paste"}
-              className={`flex items-center gap-3 rounded-lg border p-4 text-left ${
-                mode === "paste" ? "border-primary bg-[var(--primary-soft)]" : "border-border bg-panel"
-              }`}
-            >
-              <FileCode2 size={20} aria-hidden />
-              <span>
-                <span className="block text-sm font-medium">Paste code</span>
-                <span className="block text-xs text-muted-foreground">Source and tests in text areas</span>
-              </span>
-            </button>
-            <button
-              type="button"
+              icon={<FileCode2 size={14} aria-hidden />}
+              label="Paste code"
+              hint="Source and tests as text"
+            />
+            <ModeOption
+              active={mode === "github"}
               onClick={() => setMode("github")}
-              aria-pressed={mode === "github"}
-              className={`flex items-center gap-3 rounded-lg border p-4 text-left ${
-                mode === "github" ? "border-primary bg-[var(--primary-soft)]" : "border-border bg-panel"
-              }`}
-            >
-              <Github size={20} aria-hidden />
-              <span>
-                <span className="block text-sm font-medium">Connect repo file</span>
-                <span className="block text-xs text-muted-foreground">Load files from GitHub</span>
-              </span>
-            </button>
+              icon={<Github size={14} aria-hidden />}
+              label="From GitHub"
+              hint="Load files from a repo"
+            />
           </div>
 
           <div className="space-y-2">
@@ -272,14 +278,14 @@ export function PublishForm() {
           </div>
 
           {mode === "github" ? (
-            <div className="space-y-4 rounded-lg border border-border bg-panel p-4">
+            <div className="space-y-4 rounded border border-rule bg-surface p-4">
               {repoLoading ? (
-                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <p className="flex items-center gap-2 text-sm text-ink-3">
                   <Loader2 size={16} className="animate-spin" aria-hidden />
                   Loading repos
                 </p>
               ) : null}
-              {repoError ? <p className="text-sm text-danger">{repoError}</p> : null}
+              {repoError ? <p className="text-sm text-[var(--fail)]">{repoError}</p> : null}
               <div className="space-y-2">
                 <Label htmlFor="repo">Repository</Label>
                 <Select
@@ -400,10 +406,10 @@ export function PublishForm() {
               </option>
             ))}
           </Select>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-ink-3">
             Pricing is computed from the platform unit-economics formula (complexity tier + verified
             quality score), not set manually. Estimated starting price:{" "}
-            <span className="font-medium text-foreground">
+            <span className="font-medium text-ink">
               ${(computeAssetPriceCents({ complexity, qualityScore: 0 }) / 100).toFixed(2)}
             </span>{" "}
             (a quality bonus is added after verification). Delivered procurements use the 70/25/5 split.
@@ -412,42 +418,42 @@ export function PublishForm() {
       ) : null}
 
       {step === "confirm" ? (
-        <section className="space-y-4 rounded-lg border border-border bg-panel p-5">
+        <section className="space-y-4 rounded border border-rule bg-surface p-4">
           <div>
-            <p className="text-sm text-muted-foreground">Asset</p>
+            <p className="text-sm text-ink-3">Asset</p>
             <h2 className="text-xl font-semibold">{title || "Untitled asset"}</h2>
           </div>
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-muted-foreground">Source</dt>
+              <dt className="text-ink-3">Source</dt>
               <dd>{mode === "github" ? repo : "Pasted code"}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Language</dt>
+              <dt className="text-ink-3">Language</dt>
               <dd>{LANGUAGE_LABEL[language]}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Complexity</dt>
+              <dt className="text-ink-3">Complexity</dt>
               <dd>{complexity[0].toUpperCase() + complexity.slice(1)}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Est. price</dt>
+              <dt className="text-ink-3">Est. price</dt>
               <dd>${(computeAssetPriceCents({ complexity, qualityScore: 0 }) / 100).toFixed(2)}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Tags</dt>
+              <dt className="text-ink-3">Tags</dt>
               <dd>{parsedTags.join(", ") || "None"}</dd>
             </div>
           </dl>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-ink-3">
             Publishing starts Stage 1 source verification. The asset appears in the marketplace after source-language tests pass, and checked targets become available for client selection.
           </p>
           {demoMode ? (
-            <p className="rounded-md border border-[#9dbed0] bg-[var(--info-soft)] p-3 text-sm text-[var(--info)]">
+            <p className="rounded-md border border-[#9dbed0] bg-[var(--accent-soft)] p-3 text-sm text-[var(--accent)]">
               Demo mode: this will simulate a successful publish and return to the dashboard.
             </p>
           ) : null}
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
+          {error ? <p className="text-sm text-[var(--fail)]">{error}</p> : null}
         </section>
       ) : null}
 
@@ -487,9 +493,42 @@ function Field({
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
         <Label htmlFor={id}>{label}</Label>
-        {count ? <span className="text-xs text-muted-foreground">{count}</span> : null}
+        {count ? <span className="text-xs text-ink-3">{count}</span> : null}
       </div>
       {children}
     </div>
+  )
+}
+
+function ModeOption({
+  active,
+  onClick,
+  icon,
+  label,
+  hint,
+}: {
+  active: boolean
+  onClick: () => void
+  icon: React.ReactNode
+  label: string
+  hint: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded border px-3 py-2.5 text-left transition-colors ${
+        active
+          ? "border-accent bg-[var(--accent-soft)]"
+          : "border-rule bg-surface hover:border-rule-strong"
+      }`}
+    >
+      <span className={`flex items-center gap-1.5 text-sm font-medium ${active ? "text-accent" : "text-ink"}`}>
+        {icon}
+        {label}
+      </span>
+      <span className="mt-0.5 block text-xs text-ink-3">{hint}</span>
+    </button>
   )
 }

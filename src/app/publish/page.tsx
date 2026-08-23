@@ -1,4 +1,5 @@
 import { AuthButton } from "@/components/AuthButton"
+import { Page, PageHeader } from "@/components/PageHeader"
 import { PublishForm } from "@/components/PublishForm"
 import { ServiceNotice } from "@/components/ServiceNotice"
 import { isDemoMode } from "@/lib/demo-mode"
@@ -19,8 +20,10 @@ export default async function PublishPage() {
       console.error("Publish page auth unavailable", error)
 
       return (
-        <main className="mx-auto max-w-3xl px-4 py-10">
-          <ServiceNotice description="Publishing needs NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY configured in Netlify." />
+        <main>
+          <Page className="max-w-2xl">
+            <ServiceNotice description="Publishing needs NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY configured." />
+          </Page>
         </main>
       )
     }
@@ -28,40 +31,33 @@ export default async function PublishPage() {
 
   if (!user) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-10">
-        <div className="rounded-lg border border-border bg-panel p-8">
-          <p className="text-sm font-medium uppercase text-muted-foreground">Creator onboarding</p>
-          <h1 className="mt-1 text-3xl font-semibold">Publish an asset</h1>
-          <p className="mt-3 text-muted-foreground">
-            Sign in with GitHub to submit code for Stage 1 verification and marketplace listing.
-          </p>
-          <div className="mt-5">
-            <AuthButton signedIn={false} />
-          </div>
-        </div>
+      <main>
+        <PageHeader
+          eyebrow="Publish"
+          title="Publish an asset"
+          description="Sign in with GitHub to submit code for verification and listing."
+        />
+        <Page className="max-w-md">
+          <AuthButton signedIn={false} />
+        </Page>
       </main>
     )
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10">
-      <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
-        <div className="max-w-3xl">
-          <p className="text-sm font-medium uppercase text-muted-foreground">Developer upload</p>
-          <h1 className="mt-1 text-3xl font-semibold">Publish a verified baseline</h1>
-          <p className="mt-2 text-muted-foreground">
-            {demoMode
-              ? "Demo mode lets you walk through publishing without writing to a backend."
-              : "Add source and tests, write the public summary, then run Stage 1 verification on the original asset."}
-          </p>
-        </div>
-        <div className="rounded-lg border border-[#9dbed0] bg-[var(--info-soft)] p-4 text-sm text-[var(--info)]">
-          {demoMode
-            ? "Submissions are simulated locally. Set NEXT_PUBLIC_REAL_BACKEND=true to use Supabase."
-            : "Repo linking and paste mode both feed the same verification pipeline."}
-        </div>
-      </div>
-      <PublishForm />
+    <main>
+      <PageHeader
+        eyebrow="Publish"
+        title="Publish a verified baseline"
+        description={
+          demoMode
+            ? "Demo mode walks the whole flow without writing to a backend."
+            : "Add source and tests, describe it for buyers, then run verification on the original."
+        }
+      />
+      <Page className="max-w-4xl">
+        <PublishForm />
+      </Page>
     </main>
   )
 }

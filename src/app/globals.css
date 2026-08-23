@@ -1,115 +1,222 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f5f7f4;
-  --foreground: #141a17;
-  --muted: #e9eee9;
-  --muted-foreground: #5f6c65;
-  --border: #d6ded8;
-  --panel: #ffffff;
-  --primary: #0f6656;
-  --primary-hover: #0a5245;
-  --primary-foreground: #ffffff;
-  --primary-soft: #e2f4ee;
-  --accent: #b7792f;
-  --accent-soft: #fff2dc;
-  --info: #315f7d;
-  --info-soft: #e8f2f6;
-  --danger: #b4233a;
-  --danger-soft: #fff0f3;
-  --success: #0c6b55;
-  --success-soft: #e5f6f0;
-  --warning: #91610f;
-  --warning-soft: #fff5dc;
-  --code: #101713;
+/*
+  Singularity design system — "the verification log".
 
-  /* Focus ring, kept as its own token rather than reusing --primary. The ring
-     has to clear 3:1 against whatever sits behind it (WCAG 2.2 SC 1.4.11), and
-     --primary only reaches 2.65:1 on the --code hero. Splitting the token lets
-     a surface or a variant re-point the ring without moving brand color. */
-  --focus-ring: #0b4f43;
+  The product's claim is that no code ships to a buyer until it has compiled and
+  passed tests in their target language. So the interface is built like the
+  artifact that claim produces: a run log. Editorial typography for prose,
+  monospace for anything a machine measured, and a status palette (pass / running
+  / fail) used as the brand palette rather than as decoration.
+*/
+
+:root {
+  /* Paper. Warm off-white so long reading surfaces don't glare, with a distinct
+     sunken tone for rails and insets. */
+  --canvas: #fbfaf7;
+  --surface: #ffffff;
+  --sunken: #f3f2ee;
+  --raised: #ffffff;
+
+  /* Ink. Four steps is enough; more and the hierarchy stops meaning anything.
+     Every step clears 4.5:1 on --surface, --canvas and --sunken, because all
+     four carry real UI text — --ink-4 labels the verification panel and the
+     table headers, so it is not a decorative tint. */
+  --ink: #16161a;
+  --ink-2: #3d4240;
+  --ink-3: #565b58;
+  --ink-4: #6a6f6c;
+
+  --rule: #e4e2dc;
+  --rule-strong: #cdcac2;
+
+  /* The one brand accent. Blue reads as "actionable" in a tool without
+     colliding with the pass/fail semantics that carry real meaning here. */
+  --accent: #1a47c2;
+  --accent-hover: #143a9f;
+  --accent-soft: #edf1fe;
+  --accent-rule: #c3d0f6;
+
+  /* Run status. These are load-bearing: they encode verification state, so they
+     are never used for emphasis or decoration. */
+  --pass: #14713f;
+  --pass-soft: #e6f4ec;
+  --pass-rule: #a8d6bd;
+  --run: #8a5a00;
+  --run-soft: #fdf3e0;
+  --run-rule: #e3c68a;
+  --fail: #a81f35;
+  --fail-soft: #fdedef;
+  --fail-rule: #eeb4be;
+
+  /* The navigation rail, and the code surfaces, are dark. */
+  --shell: #1a1c20;
+  --shell-2: #23262b;
+  --shell-ink: #e8e8e5;
+  --shell-ink-2: #9ea3a3;
+  --shell-rule: #32363c;
+  --code: #16181c;
+
+  /* Focus ring is its own token so a dark surface can re-point it. It has to
+     clear 3:1 against whatever sits behind it (WCAG 2.2 SC 1.4.11). */
+  --focus-ring: #123aa8;
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
 
   color-scheme: light;
 }
 
-/* Dark surfaces (landing hero, code panels) flip the ring to white: #0b4f43 on
-   --code is 1.9:1, white is 18:1. Apply to any container painted --code. */
+/* Dark surfaces — the nav rail, code blocks — flip the ring to white. */
 .surface-dark {
   --focus-ring: #ffffff;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-panel: var(--panel);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
   --color-accent: var(--accent);
-  --color-danger: var(--danger);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-accent-soft: var(--accent-soft);
+  --color-pass: var(--pass);
+  --color-run: var(--run);
+  --color-fail: var(--fail);
+  --color-shell: var(--shell);
+  --color-shell-2: var(--shell-2);
+  --color-shell-ink: var(--shell-ink);
+  --color-shell-ink-2: var(--shell-ink-2);
+  --color-shell-rule: var(--shell-rule);
+  --color-code: var(--code);
+
+  --font-sans: var(--font-archivo);
+  --font-serif: var(--font-newsreader);
+  --font-mono: var(--font-jetbrains);
 }
 
-html {
-  /* SiteHeader is sticky at h-16. Without this, the skip link and any in-page
-     anchor land focus underneath it. */
-  scroll-padding-top: 5rem;
+/*
+  Element resets belong in @layer base. Unlayered rules beat every layered
+  Tailwind utility, so a bare `a { color: inherit }` silently overrides
+  text-white on a button and `button { font: inherit }` overrides text-sm.
+*/
+@layer base {
+  html {
+    /* The mobile top bar is sticky; keep anchor targets clear of it. */
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+  }
+
+  code,
+  pre {
+    font-family: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-variant-ligatures: none;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-}
+/*
+  Typographic helpers. In @layer components so a Tailwind utility beside them
+  (text-xs on .tag, say) still wins.
+*/
+@layer components {
+  /* Editorial display face. Reserved for page titles and prose headings — on UI
+     chrome it would read as decoration rather than voice. */
+  .display {
+    font-family: var(--font-newsreader), ui-serif, Georgia, serif;
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
+  }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
+  .mono {
+    font-family: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-variant-ligatures: none;
+  }
 
-code,
-pre {
-  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
+  /* Numbers in columns must not jitter between rows. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
+  /* Small monospace label — the workhorse for languages, counts, statuses. */
+  .tag {
+    font-family: var(--font-jetbrains), ui-monospace, monospace;
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* Faint ruled grid behind the landing hero. Engineering paper, not texture
+     for its own sake. */
+  .grid-paper {
+    background-image:
+      linear-gradient(to right, color-mix(in srgb, var(--rule) 55%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--rule) 55%, transparent) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .skip-link {
+    position: fixed;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 100;
+    border-radius: 0.25rem;
+    background: var(--accent);
+    padding: 0.625rem 1rem;
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transform: translateY(-250%);
+    transition: transform 150ms ease;
+  }
+
+  .skip-link:focus-visible {
+    transform: translateY(0);
+  }
 }
 
 /* Tailwind's `transition` utility animates outline-color, so a ring introduced
-   only on :focus-visible fades in from currentColor — measured at 150ms of
-   near-black on the inputs before it reaches the ring color. Pinning the color
-   at zero specificity leaves nothing to animate; the ring appears instantly and
-   any real outline-* utility still overrides this. */
+   only on :focus-visible fades in from currentColor. Pinning the color at zero
+   specificity leaves nothing to animate; real outline-* utilities still win. */
 *,
 ::before,
 ::after {
   outline-color: var(--focus-ring);
 }
 
-/* One focus indicator for the whole app. Declaring it globally covers the
-   elements that never went through components/ui — plain links, the wizard
-   step buttons, filter chips, delivery cards — instead of leaving them on the
-   UA default. :focus-visible keeps it a keyboard affordance. */
+/* One focus indicator for the whole app, so the controls that never went through
+   components/ui still get a consistent, brand-correct ring. */
 :focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
 }
 
-/* Belt and braces for UAs that still paint a ring on mouse press. */
 :focus:not(:focus-visible) {
   outline: none;
 }
 
-/* Forced-colors mode drops box-shadow, so a shadow-based ring disappears
-   entirely. Outline survives — hand it to the system highlight color. */
+/* Forced-colors drops box-shadow, so any shadow-based ring vanishes. Outline
+   survives — hand it to the system highlight color. */
 @media (forced-colors: active) {
   :focus-visible {
     outline: 2px solid Highlight;
@@ -117,17 +224,15 @@ a {
   }
 }
 
-/* Skip link: parked off-screen but in the tab order and the a11y tree, so it
-   is the first stop before the header nav. */
 .skip-link {
   position: fixed;
   top: 0.5rem;
   left: 0.5rem;
   z-index: 100;
-  border-radius: 0.375rem;
-  background: var(--primary);
+  border-radius: 0.25rem;
+  background: var(--accent);
   padding: 0.625rem 1rem;
-  color: var(--primary-foreground);
+  color: #ffffff;
   font-size: 0.875rem;
   font-weight: 500;
   transform: translateY(-250%);
@@ -138,7 +243,7 @@ a {
   transform: translateY(0);
 }
 
-/* The target takes focus programmatically; it must not draw a ring of its own. */
+/* The skip target takes focus programmatically; it must not draw its own ring. */
 #main-content:focus {
   outline: none;
 }

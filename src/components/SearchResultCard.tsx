@@ -1,57 +1,43 @@
 import Link from "next/link"
-import { ArrowRight, ShieldCheck } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { buttonVariants } from "@/components/ui/button"
 import { LANGUAGE_LABEL } from "@/lib/constants"
 import { formatMoney } from "@/lib/utils"
 import type { SearchResult } from "@/lib/marketplace/search"
 
-// Lighter-weight card for /api/search rows. The marketplace_search view
-// doesn't join per-variant status (only the source-language row is present),
-// so this can't reuse AssetCard's per-language verification badges — it
-// surfaces the structured tags instead.
+// The marketplace_search view only carries the source-language row, so this
+// can't show a per-language run strip the way AssetCard does — it leads with the
+// structured tags and quality score instead.
 export function SearchResultCard({ asset }: { asset: SearchResult }) {
-  const chips = [...(asset.genre ?? []), ...(asset.purpose ?? [])].slice(0, 4)
+  const chips = [...(asset.genre ?? []), ...(asset.purpose ?? [])].slice(0, 5)
 
   return (
-    <article className="rounded-lg border border-border bg-panel p-5 shadow-sm transition hover:border-[#aac6bb]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <Badge tone="info">{LANGUAGE_LABEL[asset.primary_language]} source</Badge>
-          <h3 className="mt-1 text-lg font-semibold">{asset.title}</h3>
+    <article className="group relative border-b border-rule bg-surface px-4 py-3.5 transition-colors last:border-b-0 hover:bg-sunken/60">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h3 className="text-[0.9375rem] font-semibold leading-6 text-ink">
+            <Link href={`/marketplace/${asset.id}`} className="after:absolute after:inset-0">
+              {asset.title}
+            </Link>
+          </h3>
+          <p className="mt-0.5 line-clamp-2 text-sm leading-6 text-ink-2">
+            {asset.short_description}
+          </p>
         </div>
-        <span className="rounded-md bg-muted px-2.5 py-1 text-sm font-semibold">
-          {formatMoney(asset.price_cents)}
-        </span>
-      </div>
-      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-        <ShieldCheck size={14} className="text-primary" aria-hidden />
-        <span>Stage 1 verified baseline</span>
-        {asset.quality_score !== null && (
-          <>
-            <span className="text-border">|</span>
-            <span>Quality {asset.quality_score.toFixed(1)}/5</span>
-          </>
-        )}
-      </div>
-      <p className="mt-3 text-sm text-muted-foreground">{asset.short_description}</p>
-      <p className="mt-3 line-clamp-3 text-sm">{asset.summary}</p>
-      {chips.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {chips.map((tag) => (
-            <span key={tag} className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
-              {tag}
-            </span>
-          ))}
+        <div className="shrink-0 text-right">
+          <p className="mono tabular text-sm font-medium text-ink">{formatMoney(asset.price_cents)}</p>
+          {asset.quality_score !== null ? (
+            <p className="tag mt-0.5 text-ink-4">Q {asset.quality_score.toFixed(1)}</p>
+          ) : null}
         </div>
-      )}
-      <Link
-        href={`/marketplace/${asset.id}`}
-        className={buttonVariants({ variant: "secondary", size: "sm", className: "mt-5" })}
-      >
-        View asset
-        <ArrowRight size={15} aria-hidden />
-      </Link>
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-4">
+        <span className="mono">{LANGUAGE_LABEL[asset.primary_language]} original</span>
+        {chips.map((tag) => (
+          <span key={tag} className="before:mr-2 before:content-['·']">
+            {tag}
+          </span>
+        ))}
+      </div>
     </article>
   )
 }

@@ -1,19 +1,20 @@
 import Link from "next/link"
 import { BadgeCheck, GitBranch, PackagePlus, PlugZap, Wallet } from "lucide-react"
 import { GitHubInstallButton } from "@/components/GitHubInstallButton"
-import { LanguageBadge } from "@/components/LanguageBadge"
+import { EmptyState, Page, PageHeader, Panel } from "@/components/PageHeader"
 import { ProcurementStatus } from "@/components/ProcurementStatus"
+import { VerificationStrip } from "@/components/Verification"
 import { ServiceNotice } from "@/components/ServiceNotice"
 import { WhopConnectButton } from "@/components/WhopConnectButton"
 import { WhopPayoutsButton } from "@/components/WhopPayoutsButton"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
-import { LANGUAGES, LANGUAGE_LABEL } from "@/lib/constants"
+import { LANGUAGE_LABEL } from "@/lib/constants"
 import { demoAssets, demoPayments, demoProcurements, demoProfile, demoVariants } from "@/lib/demo-data"
 import { isDemoMode } from "@/lib/demo-mode"
 import { createClient } from "@/lib/supabase/server"
 import { formatDate, formatMoney } from "@/lib/utils"
-import type { AssetVariant, Language } from "@/types/database"
+import type { AssetVariant } from "@/types/database"
 
 export const dynamic = "force-dynamic"
 
@@ -36,8 +37,10 @@ export default async function DashboardPage({
       console.error("Dashboard auth unavailable", error)
 
       return (
-        <main className="mx-auto max-w-3xl px-4 py-10">
-          <ServiceNotice description="The dashboard needs Supabase runtime environment variables configured in Netlify." />
+        <main>
+          <Page className="max-w-2xl">
+            <ServiceNotice description="The dashboard needs Supabase runtime environment variables configured." />
+          </Page>
         </main>
       )
     }
@@ -45,12 +48,12 @@ export default async function DashboardPage({
 
   if (!user) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-10">
-        <div className="rounded-lg border border-border bg-panel p-8">
-          <p className="text-sm font-medium uppercase text-muted-foreground">Creator console</p>
-          <h1 className="mt-1 text-3xl font-semibold">Dashboard</h1>
-          <p className="mt-3 text-muted-foreground">Sign in to manage verified assets, procurements, and earnings.</p>
-        </div>
+      <main>
+        <PageHeader
+          eyebrow="Publish"
+          title="Dashboard"
+          description="Sign in to manage verified assets, deliveries, and earnings."
+        />
       </main>
     )
   }
@@ -114,169 +117,188 @@ export default async function DashboardPage({
   const payoutsReady = Boolean(profile?.whop_company_id && profile?.whop_kyc_complete)
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10">
-      <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-        <div>
-          <p className="text-sm font-medium uppercase text-muted-foreground">Creator console</p>
-          <h1 className="mt-1 text-3xl font-semibold">Assets, procurements, earnings</h1>
-          <p className="mt-2 text-muted-foreground">
-            {demoMode
-              ? "Demo data showing Stage 1 asset verification, client procurements, GitHub installation, and creator earnings."
-              : "Track Stage 1 asset verification, client procurements, GitHub installation, and creator earnings."}
-          </p>
-        </div>
-        <Link href="/publish" className={buttonVariants()}>
-          <PackagePlus size={16} aria-hidden />
-          Publish asset
-        </Link>
-      </div>
+    <main>
+      <PageHeader
+        eyebrow="Publish"
+        title="Creator console"
+        description={
+          demoMode
+            ? "Demo data: verification runs, buyer deliveries, and earnings."
+            : "Your verification runs, buyer deliveries, and earnings."
+        }
+        actions={
+          <Link href="/publish" className={buttonVariants({ size: "sm" })}>
+            <PackagePlus size={14} aria-hidden />
+            New asset
+          </Link>
+        }
+      />
 
-      <section className="mb-8 grid gap-4 md:grid-cols-3">
-        <div className="rounded-lg border border-border bg-panel p-5">
-          <PlugZap size={18} className="text-primary" aria-hidden />
-          <p className="mt-3 text-sm text-muted-foreground">GitHub App</p>
-          <p className="mt-2 font-semibold">
-            {profile?.github_installation_id ? `Installed #${profile.github_installation_id}` : "Not installed"}
-          </p>
-          <div className="mt-4">
-            <GitHubInstallButton />
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-panel p-5">
-          <Wallet size={18} className="text-primary" aria-hidden />
-          <p className="mt-3 text-sm text-muted-foreground">Creator earnings</p>
-          <p className="mt-2 text-2xl font-semibold">{formatMoney(profile?.total_earnings_cents ?? 0)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Current balance</p>
-        </div>
-        <div className="rounded-lg border border-border bg-panel p-5">
-          <BadgeCheck size={18} className="text-primary" aria-hidden />
-          <p className="mt-3 text-sm text-muted-foreground">Stage 1 assets</p>
-          <p className="mt-2 text-2xl font-semibold">{publishedCount}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{verifyingCount} verifying</p>
-        </div>
-      </section>
+      <Page className="space-y-6">
+        <section className="grid gap-3 sm:grid-cols-3">
+          <Stat
+            label="Creator earnings"
+            value={formatMoney(profile?.total_earnings_cents ?? 0)}
+            hint="Current balance"
+            icon={<Wallet size={14} aria-hidden />}
+          />
+          <Stat
+            label="Published assets"
+            value={String(publishedCount)}
+            hint={`${verifyingCount} still verifying`}
+            icon={<BadgeCheck size={14} aria-hidden />}
+          />
+          <Stat
+            label="GitHub App"
+            value={profile?.github_installation_id ? "Installed" : "Not installed"}
+            hint={
+              profile?.github_installation_id
+                ? `Installation #${profile.github_installation_id}`
+                : "Required for PR delivery"
+            }
+            icon={<PlugZap size={14} aria-hidden />}
+            action={<GitHubInstallButton />}
+          />
+        </section>
 
-      <section className="mb-8 rounded-lg border border-border bg-panel p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">Payouts</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+        <Panel title="Payouts">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-xl text-sm leading-6 text-ink-2">
               {payoutsReady
                 ? "Whop is connected. Buyer payments split to your balance automatically — withdraw any time."
                 : "Connect a Whop account to receive payments. Until this is done, your published assets can't be purchased."}
             </p>
+            {payoutsReady ? (
+              <WhopPayoutsButton />
+            ) : (
+              <WhopConnectButton connected={Boolean(profile?.whop_company_id)} />
+            )}
           </div>
-          {payoutsReady ? (
-            <WhopPayoutsButton />
-          ) : (
-            <WhopConnectButton connected={Boolean(profile?.whop_company_id)} />
-          )}
-        </div>
-      </section>
+        </Panel>
 
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <GitBranch size={19} className="text-primary" aria-hidden />
-          <h2 className="text-xl font-semibold">Stage 1 assets</h2>
-        </div>
-        {(assets ?? []).length ? (
-          <div className="grid gap-4">
-            {(assets ?? []).map((asset) => {
-              const assetVariants = variantsByAsset.get(asset.id) ?? []
-              const variantByLanguage = new Map<Language, AssetVariant>()
-              assetVariants.forEach((variant) => variantByLanguage.set(variant.target_language, variant))
-
-              return (
-                <article key={asset.id} className="rounded-lg border border-border bg-panel p-5">
-                  <div className="flex flex-col justify-between gap-3 md:flex-row">
-                    <div>
-                      <h3 className="text-lg font-semibold">{asset.title}</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">{asset.short_description}</p>
+        <section>
+          <div className="mb-2 flex items-center gap-2">
+            <GitBranch size={15} className="text-ink-4" aria-hidden />
+            <h2 className="tag text-ink-3">Your assets</h2>
+          </div>
+          {(assets ?? []).length ? (
+            <div className="overflow-hidden rounded border border-rule">
+              {(assets ?? []).map((asset) => (
+                <article key={asset.id} className="border-b border-rule bg-surface px-4 py-3.5 last:border-b-0">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <h3 className="text-[0.9375rem] font-semibold text-ink">{asset.title}</h3>
+                      <p className="mt-0.5 text-sm leading-6 text-ink-2">{asset.short_description}</p>
                     </div>
-                    <Badge tone={asset.status === "published" ? "success" : "warning"}>{asset.status}</Badge>
+                    <Badge tone={asset.status === "published" ? "pass" : "run"}>{asset.status}</Badge>
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {LANGUAGES.map((language) => (
-                      <LanguageBadge
-                        key={language}
-                        language={language}
-                        status={variantByLanguage.get(language)?.status}
-                      />
-                    ))}
+                  <div className="mt-2.5">
+                    <VerificationStrip
+                      variants={variantsByAsset.get(asset.id) ?? []}
+                      sourceLanguage={asset.source_language}
+                    />
                   </div>
                 </article>
-              )
-            })}
-          </div>
-        ) : (
-          <EmptyState message="No assets yet." />
-        )}
-      </section>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              message="No assets yet."
+              action={
+                <Link href="/publish" className={buttonVariants({ size: "sm" })}>
+                  Publish your first asset
+                </Link>
+              }
+            />
+          )}
+        </section>
 
-      <section className="mt-10 space-y-4">
-        <h2 className="text-xl font-semibold">Client procurements</h2>
-        {(procurements ?? []).length ? (
-          <div className="overflow-hidden rounded-lg border border-border bg-panel">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-muted text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Created</th>
-                  <th className="px-4 py-3 font-medium">Language</th>
-                  <th className="px-4 py-3 font-medium">Delivery</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Open</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(procurements ?? []).map((procurement) => (
-                  <tr key={procurement.id} className="border-t border-border">
-                    <td className="px-4 py-3">{formatDate(procurement.created_at)}</td>
-                    <td className="px-4 py-3">{LANGUAGE_LABEL[procurement.target_language]}</td>
-                    <td className="px-4 py-3">{procurement.delivery_method}</td>
-                    <td className="px-4 py-3">
-                      <ProcurementStatus status={procurement.status} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link className="font-medium text-primary underline" href={`/procurements/${procurement.id}`}>
-                        View
-                      </Link>
-                    </td>
+        <section>
+          <h2 className="tag mb-2 text-ink-3">Buyer deliveries</h2>
+          {(procurements ?? []).length ? (
+            <div className="overflow-x-auto rounded border border-rule bg-surface">
+              <table className="w-full min-w-[34rem] text-left text-sm">
+                <thead className="border-b border-rule bg-sunken">
+                  <tr className="tag text-ink-4">
+                    <th scope="col" className="px-4 py-2 font-normal">Created</th>
+                    <th scope="col" className="px-4 py-2 font-normal">Language</th>
+                    <th scope="col" className="px-4 py-2 font-normal">Delivery</th>
+                    <th scope="col" className="px-4 py-2 font-normal">Status</th>
+                    <th scope="col" className="px-4 py-2 font-normal"><span className="sr-only">Open</span></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState message="No procurements yet." />
-        )}
-      </section>
+                </thead>
+                <tbody className="divide-y divide-rule">
+                  {(procurements ?? []).map((procurement) => (
+                    <tr key={procurement.id}>
+                      <td className="tabular px-4 py-2.5 text-ink-2">{formatDate(procurement.created_at)}</td>
+                      <td className="mono px-4 py-2.5 text-xs text-ink">{LANGUAGE_LABEL[procurement.target_language]}</td>
+                      <td className="px-4 py-2.5 text-ink-2">
+                        {procurement.delivery_method === "github_pr" ? "pull request" : "download"}
+                      </td>
+                      <td className="px-4 py-2.5"><ProcurementStatus status={procurement.status} /></td>
+                      <td className="px-4 py-2.5 text-right">
+                        <Link className="text-accent hover:underline" href={`/procurements/${procurement.id}`}>
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState message="No deliveries yet." />
+          )}
+        </section>
 
-      <section className="mt-10 space-y-4">
-        <h2 className="text-xl font-semibold">Creator earnings ledger</h2>
-        {(payments ?? []).length ? (
-          <div className="grid gap-3">
-            {(payments ?? []).map((payment) => (
-              <div key={payment.id} className="flex items-center justify-between rounded-lg border border-border bg-panel p-4">
-                <div>
-                  <p className="font-medium">{formatMoney(payment.amount_cents)}</p>
-                  <p className="text-sm text-muted-foreground">{formatDate(payment.created_at)}</p>
+        <section>
+          <h2 className="tag mb-2 text-ink-3">Earnings ledger</h2>
+          {(payments ?? []).length ? (
+            <div className="overflow-hidden rounded border border-rule">
+              {(payments ?? []).map((payment) => (
+                <div
+                  key={payment.id}
+                  className="flex items-center justify-between border-b border-rule bg-surface px-4 py-2.5 last:border-b-0"
+                >
+                  <div>
+                    <p className="mono tabular text-sm text-ink">{formatMoney(payment.amount_cents)}</p>
+                    <p className="tabular mt-0.5 text-xs text-ink-3">{formatDate(payment.created_at)}</p>
+                  </div>
+                  <Badge tone={payment.status === "paid" ? "pass" : "run"}>{payment.status}</Badge>
                 </div>
-                <span className="rounded-md bg-muted px-2 py-1 text-xs">{payment.status}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState message="No earnings yet." />
-        )}
-      </section>
+              ))}
+            </div>
+          ) : (
+            <EmptyState message="No earnings yet." />
+          )}
+        </section>
+      </Page>
     </main>
   )
 }
 
-function EmptyState({ message }: { message: string }) {
+function Stat({
+  label,
+  value,
+  hint,
+  icon,
+  action,
+}: {
+  label: string
+  value: string
+  hint: string
+  icon: React.ReactNode
+  action?: React.ReactNode
+}) {
   return (
-    <div className="rounded-lg border border-border bg-panel p-6 text-sm text-muted-foreground">
-      {message}
+    <div className="rounded border border-rule bg-surface p-3.5">
+      <p className="tag flex items-center gap-1.5 text-ink-4">
+        <span className="text-ink-4">{icon}</span>
+        {label}
+      </p>
+      <p className="tabular mt-1.5 text-xl font-semibold text-ink">{value}</p>
+      <p className="mt-0.5 text-xs text-ink-3">{hint}</p>
+      {action ? <div className="mt-3">{action}</div> : null}
     </div>
   )
 }
