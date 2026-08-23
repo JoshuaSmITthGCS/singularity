@@ -6,6 +6,7 @@ import { Check, Download, GitPullRequest, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select } from "@/components/ui/select"
 import { LANGUAGE_LABEL } from "@/lib/constants"
 import { isDemoMode } from "@/lib/demo-mode"
 import type { DeliveryMethod, MarketplaceVariant } from "@/types/database"
@@ -107,68 +108,58 @@ export function PurchaseForm({
 
   if (!passedVariants.length) {
     return (
-      <div className="rounded-lg border border-border bg-panel p-5 text-sm text-muted-foreground">
+      <div className="rounded border border-dashed border-rule-strong bg-surface p-5 text-sm text-ink-3">
         No verified target is available yet.
       </div>
     )
   }
 
   return (
-    <div className="space-y-5 rounded-lg border border-border bg-panel p-5">
+    <div className="space-y-4 rounded border border-rule bg-surface p-4">
       <div>
-        <p className="flex items-center gap-2 text-sm font-medium">
-          <ShieldCheck size={16} className="text-primary" aria-hidden />
-          Stage 2 selection
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+          <ShieldCheck size={15} className="text-[var(--pass)]" aria-hidden />
+          Buy a verified target
         </p>
-          <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-xs leading-5 text-ink-3">
           {demoMode
-            ? "Choose a checked target and delivery path; delivery is simulated in demo mode."
-            : "Choose a checked target and delivery path for integration."}
+            ? "Only passing targets are selectable. Delivery is simulated in demo mode."
+            : "Only targets that passed their tests are selectable."}
         </p>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="variant">Verified target</Label>
-        <select
+      <div className="space-y-1.5">
+        <Label htmlFor="variant" className="tag text-ink-4">Verified target</Label>
+        <Select
           id="variant"
           value={variantId}
           onChange={(event) => setVariantId(event.target.value)}
-          className="h-10 w-full rounded-md border border-border bg-panel px-3 text-sm"
         >
           {passedVariants.map((variant) => (
             <option key={variant.id} value={variant.id}>
               {LANGUAGE_LABEL[variant.target_language]}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <button
-          type="button"
-          onClick={() => setDeliveryMethod("download")}
-          className={`flex items-center gap-3 rounded-lg border p-4 text-left ${
-            deliveryMethod === "download" ? "border-primary bg-[var(--primary-soft)]" : "border-border bg-panel"
-          }`}
-        >
-          <Download size={18} aria-hidden />
-          <span>
-            <span className="block text-sm font-medium">Download</span>
-            <span className="block text-xs text-muted-foreground">Show adapted code after confirm</span>
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setDeliveryMethod("github_pr")}
-          className={`flex items-center gap-3 rounded-lg border p-4 text-left ${
-            deliveryMethod === "github_pr" ? "border-primary bg-[var(--primary-soft)]" : "border-border bg-panel"
-          }`}
-        >
-          <GitPullRequest size={18} aria-hidden />
-          <span>
-            <span className="block text-sm font-medium">GitHub PR</span>
-            <span className="block text-xs text-muted-foreground">Open a branch and PR</span>
-          </span>
-        </button>
+      <div className="space-y-2">
+        <span className="tag block text-ink-4">Delivery</span>
+        <div className="grid grid-cols-2 gap-1.5">
+          <DeliveryOption
+            active={deliveryMethod === "download"}
+            onClick={() => setDeliveryMethod("download")}
+            icon={<Download size={14} aria-hidden />}
+            label="Download"
+            hint="Code shown after confirm"
+          />
+          <DeliveryOption
+            active={deliveryMethod === "github_pr"}
+            onClick={() => setDeliveryMethod("github_pr")}
+            icon={<GitPullRequest size={14} aria-hidden />}
+            label="Pull request"
+            hint="Opened in your repo"
+          />
+        </div>
       </div>
 
       {deliveryMethod === "github_pr" ? (
@@ -198,16 +189,16 @@ export function PurchaseForm({
         {loading ? "Delivering" : "Confirm procurement"}
       </Button>
 
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--fail)]">{error}</p> : null}
 
       {result ? (
-        <div className="space-y-4 rounded-lg border border-[#96cdbd] bg-[var(--success-soft)] p-4">
+        <div className="space-y-4 rounded border border-[var(--pass-rule)] bg-[var(--pass-soft)] p-4">
           <p className="text-sm font-medium">
             {result.procurement.status === "delivered" ? "Procurement delivered." : "Procurement failed."}
           </p>
           <Link
             href={`/procurements/${result.procurement.id}`}
-            className="text-sm font-medium text-primary underline"
+            className="text-sm font-medium text-accent underline"
           >
             Open procurement
           </Link>
@@ -216,17 +207,27 @@ export function PurchaseForm({
               href={result.procurement.pr_url}
               target="_blank"
               rel="noreferrer"
-              className="block text-sm font-medium text-primary underline"
+              className="block text-sm font-medium text-accent underline"
             >
               View pull request
             </a>
           ) : null}
           {result.download_payload ? (
             <div className="grid gap-3">
-              <pre className="max-h-72 overflow-auto rounded-md bg-[var(--code)] p-4 text-xs text-white">
+              <pre
+                tabIndex={0}
+                role="region"
+                aria-label="Adapted source code"
+                className="surface-dark max-h-72 overflow-auto rounded-md bg-[var(--code)] p-4 text-xs text-white"
+              >
                 {result.download_payload.translated_code}
               </pre>
-              <pre className="max-h-72 overflow-auto rounded-md bg-[var(--code)] p-4 text-xs text-white">
+              <pre
+                tabIndex={0}
+                role="region"
+                aria-label="Adapted tests"
+                className="surface-dark max-h-72 overflow-auto rounded-md bg-[var(--code)] p-4 text-xs text-white"
+              >
                 {result.download_payload.translated_tests}
               </pre>
             </div>
@@ -234,5 +235,38 @@ export function PurchaseForm({
         </div>
       ) : null}
     </div>
+  )
+}
+
+function DeliveryOption({
+  active,
+  onClick,
+  icon,
+  label,
+  hint,
+}: {
+  active: boolean
+  onClick: () => void
+  icon: React.ReactNode
+  label: string
+  hint: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded border px-2.5 py-2 text-left transition-colors ${
+        active
+          ? "border-accent bg-[var(--accent-soft)]"
+          : "border-rule bg-surface hover:border-rule-strong"
+      }`}
+    >
+      <span className={`flex items-center gap-1.5 text-xs font-medium ${active ? "text-accent" : "text-ink"}`}>
+        {icon}
+        {label}
+      </span>
+      <span className="mt-0.5 block text-[0.6875rem] leading-4 text-ink-3">{hint}</span>
+    </button>
   )
 }

@@ -1,7 +1,9 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import { Page, PageHeader } from "@/components/PageHeader"
 import { ProcurementStatus } from "@/components/ProcurementStatus"
 import { ServiceNotice } from "@/components/ServiceNotice"
+import { GitPullRequest } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { LANGUAGE_LABEL } from "@/lib/constants"
 import { getDemoAsset, getDemoProcurement, getDemoVariant } from "@/lib/demo-data"
@@ -27,8 +29,10 @@ export default async function ProcurementDetailPage({
       console.error("Procurement detail unavailable", error)
 
       return (
-        <main className="mx-auto max-w-3xl px-4 py-10">
-          <ServiceNotice description="Procurement details need Supabase runtime environment variables configured in Netlify." />
+        <main>
+          <Page className="max-w-2xl">
+            <ServiceNotice description="Procurement details need Supabase runtime environment variables configured." />
+          </Page>
         </main>
       )
     }
@@ -54,59 +58,69 @@ export default async function ProcurementDetailPage({
     : (await supabase!.from("asset_variants").select("*").eq("id", procurement.variant_id).maybeSingle()).data
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10">
-      <div className="mb-8 flex flex-col justify-between gap-3 md:flex-row md:items-start">
-        <div>
-          <p className="text-sm font-medium uppercase text-muted-foreground">Stage 2 delivery</p>
-          <h1 className="mt-1 text-3xl font-semibold">Procurement</h1>
-          <p className="mt-2 text-muted-foreground">
-            Created {formatDate(procurement.created_at)} for {formatMoney(procurement.price_cents)}
-          </p>
-        </div>
-        <ProcurementStatus status={procurement.status} />
-      </div>
+    <main>
+      <PageHeader
+        eyebrow="Procure"
+        title={asset?.title ?? "Delivery"}
+        description={
+          <span className="tabular">
+            {variant ? `${LANGUAGE_LABEL[variant.target_language]} · ` : ""}
+            {formatDate(procurement.created_at)} · {formatMoney(procurement.price_cents)}
+          </span>
+        }
+        actions={<ProcurementStatus status={procurement.status} />}
+      />
 
-      {procurement.failure_reason ? (
-        <div className="mb-6 rounded-lg border border-[#ef9aac] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)]">
-          {procurement.failure_reason}
-        </div>
-      ) : null}
-
-      {procurement.status === "delivered" && procurement.pr_url ? (
-        <a href={procurement.pr_url} target="_blank" rel="noreferrer" className={buttonVariants()}>
-          View pull request
-        </a>
-      ) : null}
-
-      {procurement.status === "delivered" && procurement.delivery_method === "download" && variant ? (
-        <section className="grid gap-5">
-          <div className="rounded-lg border border-border bg-panel p-5">
-            <h2 className="text-xl font-semibold">{asset?.title ?? "Adapted asset"}</h2>
-            <p className="mt-2 text-sm text-muted-foreground">{LANGUAGE_LABEL[variant.target_language]}</p>
+      <Page className="max-w-4xl space-y-5">
+        {procurement.failure_reason ? (
+          <div className="rounded border border-[var(--fail-rule)] bg-[var(--fail-soft)] p-3.5 text-sm leading-6 text-[var(--fail)]">
+            {procurement.failure_reason}
           </div>
-          <CodeBlock title="Adapted source" value={variant.translated_code ?? ""} />
-          <CodeBlock title="Adapted tests" value={variant.translated_tests ?? ""} />
-        </section>
-      ) : null}
+        ) : null}
 
-      {procurement.status !== "delivered" ? (
-        <div className="rounded-lg border border-border bg-panel p-6 text-sm text-muted-foreground">
-          Delivery is still in progress. Refresh this page for the latest status.
-        </div>
-      ) : null}
+        {procurement.status === "delivered" && procurement.pr_url ? (
+          <a
+            href={procurement.pr_url}
+            target="_blank"
+            rel="noreferrer"
+            className={buttonVariants({ size: "sm" })}
+          >
+            <GitPullRequest size={14} aria-hidden />
+            View pull request
+          </a>
+        ) : null}
 
-      <Link href="/dashboard" className="mt-8 inline-block text-sm font-medium text-primary underline">
-        Back to dashboard
-      </Link>
+        {procurement.status === "delivered" && procurement.delivery_method === "download" && variant ? (
+          <>
+            <CodeBlock title="Adapted source" value={variant.translated_code ?? ""} />
+            <CodeBlock title="Adapted tests" value={variant.translated_tests ?? ""} />
+          </>
+        ) : null}
+
+        {procurement.status !== "delivered" ? (
+          <div className="rounded border border-dashed border-rule-strong bg-surface px-6 py-10 text-center text-sm text-ink-3">
+            Delivery is still in progress. Refresh for the latest status.
+          </div>
+        ) : null}
+
+        <Link href="/dashboard" className="inline-block text-sm text-accent hover:underline">
+          ← Back to dashboard
+        </Link>
+      </Page>
     </main>
   )
 }
 
 function CodeBlock({ title, value }: { title: string; value: string }) {
   return (
-    <section>
-      <h2 className="mb-2 text-lg font-semibold">{title}</h2>
-      <pre className="max-h-[520px] overflow-auto rounded-lg bg-[var(--code)] p-4 text-xs text-white">
+    <section className="overflow-hidden rounded border border-rule">
+      <h2 className="tag border-b border-rule bg-sunken px-3 py-2 text-ink-3">{title}</h2>
+      <pre
+        tabIndex={0}
+        role="region"
+        aria-label={title}
+        className="surface-dark max-h-[32rem] overflow-auto bg-code p-4 text-xs leading-6 text-[#e8e8e5]"
+      >
         {value}
       </pre>
     </section>

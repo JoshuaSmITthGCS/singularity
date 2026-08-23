@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AssetCard } from "@/components/AssetCard"
 import { SearchResultCard } from "@/components/SearchResultCard"
+import { EmptyState } from "@/components/PageHeader"
 import { Input } from "@/components/ui/input"
 import { LANGUAGES, LANGUAGE_LABEL } from "@/lib/constants"
 import { COMPLEXITY_LEVELS, ENGINES, GENRE_GROUPS } from "@/lib/taxonomy"
@@ -50,6 +51,7 @@ export function MarketplaceSearch({ assets }: { assets: AssetWithVariants[] }) {
   const [expanded, setExpanded] = useState<SearchResult[]>([])
   const [expandedLabel, setExpandedLabel] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [facetsOpen, setFacetsOpen] = useState(false)
 
   const active = useMemo(() => !isEmpty(filters), [filters])
 
@@ -116,23 +118,39 @@ export function MarketplaceSearch({ assets }: { assets: AssetWithVariants[] }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-4 rounded-lg border border-border bg-panel p-4">
+    <div className="grid gap-6 lg:grid-cols-[15rem_1fr] lg:items-start">
+      {/* Filter rail. Facets stay visible while scanning results, the way a
+          repo search or a subreddit sidebar does. */}
+      <aside className="lg:sticky lg:top-6">
         <label className="relative block">
           <Search
-            size={17}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            size={15}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-4"
             aria-hidden
           />
           <Input
             value={filters.q}
             onChange={(event) => setFilters((prev) => ({ ...prev, q: event.target.value }))}
-            placeholder="Search behavior, purpose, engine terms, or tags"
-            className="pl-9"
+            placeholder="Search behavior or tags"
+            className="pl-8"
+            aria-label="Search assets"
           />
         </label>
 
-        <div className="flex flex-wrap gap-4 text-xs">
+        {/* On mobile the facet stack buries the results, so it collapses.
+            Kept in DOM order so focus order still matches the visual one. */}
+        <button
+          type="button"
+          onClick={() => setFacetsOpen((value) => !value)}
+          aria-expanded={facetsOpen}
+          aria-controls="facets"
+          className="mt-2 flex w-full items-center justify-between rounded border border-rule bg-surface px-2.5 py-1.5 text-xs text-ink-2 lg:hidden"
+        >
+          Filters
+          <span aria-hidden>{facetsOpen ? "−" : "+"}</span>
+        </button>
+
+        <div id="facets" className={`mt-4 space-y-4 ${facetsOpen ? "block" : "hidden"} lg:block`}>
           <FacetGroup label="Language">
             {LANGUAGES.map((item) => (
               <Chip key={item} active={filters.lang.includes(item)} onClick={() => toggle("lang", item)}>
@@ -171,33 +189,35 @@ export function MarketplaceSearch({ assets }: { assets: AssetWithVariants[] }) {
             <button
               type="button"
               onClick={() => setFilters(EMPTY_FILTERS)}
-              className="self-end text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              className="text-xs text-accent underline underline-offset-2 hover:text-[var(--accent-hover)]"
             >
-              Clear filters
+              Clear all filters
             </button>
           )}
         </div>
-      </div>
+      </aside>
 
-      {active ? (
-        <SearchResults
-          loading={loading}
-          results={results}
-          expanded={expanded}
-          expandedLabel={expandedLabel}
-        />
-      ) : (
-        <DefaultGrid assets={assets} />
-      )}
+      <div className="min-w-0">
+        {active ? (
+          <SearchResults
+            loading={loading}
+            results={results}
+            expanded={expanded}
+            expandedLabel={expandedLabel}
+          />
+        ) : (
+          <DefaultList assets={assets} />
+        )}
+      </div>
     </div>
   )
 }
 
 function FacetGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <span className="font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
-      <div className="flex flex-wrap gap-1.5">{children}</div>
+    <div>
+      <span className="tag block pb-1.5 text-ink-4">{label}</span>
+      <div className="flex flex-wrap gap-1">{children}</div>
     </div>
   )
 }
@@ -216,10 +236,10 @@ function Chip({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`rounded-full border px-2.5 py-1 text-xs capitalize transition ${
+      className={`rounded border px-1.5 py-0.5 text-xs capitalize transition-colors ${
         active
-          ? "border-primary bg-primary/10 text-primary"
-          : "border-border bg-background text-muted-foreground hover:border-[#aac6bb]"
+          ? "border-[var(--accent-rule)] bg-[var(--accent-soft)] font-medium text-accent"
+          : "border-rule bg-surface text-ink-3 hover:border-rule-strong hover:text-ink"
       }`}
     >
       {children}
@@ -227,21 +247,27 @@ function Chip({
   )
 }
 
-function DefaultGrid({ assets }: { assets: AssetWithVariants[] }) {
+// Results live in one bordered list rather than a card grid: the rows are
+// comparable, and a grid of boxes hides how many there are.
+function ResultList({ children }: { children: React.ReactNode }) {
+  return <div className="overflow-hidden rounded border border-rule">{children}</div>
+}
+
+function DefaultList({ assets }: { assets: AssetWithVariants[] }) {
+  if (!assets.length) {
+    return <EmptyState message="No assets published yet." />
+  }
+
   return (
     <>
-      <p className="text-sm text-muted-foreground">Showing {assets.length} assets</p>
-      {assets.length ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {assets.map((asset) => (
-            <AssetCard key={asset.id} asset={asset} variants={asset.variants} />
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-lg border border-border bg-panel p-8 text-center text-sm text-muted-foreground">
-          No assets published yet.
-        </div>
-      )}
+      <p className="mb-2 text-xs text-ink-3">
+        <span className="tabular font-medium text-ink">{assets.length}</span> published assets
+      </p>
+      <ResultList>
+        {assets.map((asset) => (
+          <AssetCard key={asset.id} asset={asset} variants={asset.variants} />
+        ))}
+      </ResultList>
     </>
   )
 }
@@ -258,42 +284,39 @@ function SearchResults({
   expandedLabel: string | null
 }) {
   if (loading && results.length === 0 && expanded.length === 0) {
-    return <p className="text-sm text-muted-foreground">Searching…</p>
+    return <p className="text-sm text-ink-3">Searching…</p>
   }
 
   if (results.length === 0 && expanded.length === 0) {
-    return (
-      <div className="rounded-lg border border-border bg-panel p-8 text-center text-sm text-muted-foreground">
-        No assets match those filters.
-      </div>
-    )
+    return <EmptyState message="No assets match those filters." />
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7">
       {results.length > 0 && (
         <div>
-          <p className="mb-3 text-sm text-muted-foreground">
-            {results.length} match{results.length === 1 ? "" : "es"}
+          <p className="mb-2 text-xs text-ink-3">
+            <span className="tabular font-medium text-ink">{results.length}</span> match
+            {results.length === 1 ? "" : "es"}
           </p>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <ResultList>
             {results.map((asset) => (
               <SearchResultCard key={asset.id} asset={asset} />
             ))}
-          </div>
+          </ResultList>
         </div>
       )}
 
       {expanded.length > 0 && (
         <div>
-          <p className="mb-3 text-sm font-medium text-muted-foreground">
+          <p className="mb-2 text-xs text-ink-3">
             {expandedLabel ?? "Related assets you may not have considered"}
           </p>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <ResultList>
             {expanded.map((asset) => (
               <SearchResultCard key={asset.id} asset={asset} />
             ))}
-          </div>
+          </ResultList>
         </div>
       )}
     </div>

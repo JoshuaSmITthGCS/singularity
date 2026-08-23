@@ -1,4 +1,3 @@
-import { Check, Clock, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { LANGUAGE_LABEL } from "@/lib/constants"
 import type { Language, VariantStatus } from "@/types/database"
@@ -10,28 +9,19 @@ export function LanguageBadge({
   language: Language
   status?: VariantStatus | null
 }) {
-  if (status === "passed") {
-    return (
-      <Badge tone="success">
-        <Check size={14} aria-hidden />
-        {LANGUAGE_LABEL[language]}
-      </Badge>
-    )
-  }
-
-  if (status === "failed") {
-    return (
-      <Badge tone="danger">
-        <X size={14} aria-hidden />
-        {LANGUAGE_LABEL[language]}
-      </Badge>
-    )
-  }
+  const tone = status === "passed" ? "pass" : status === "failed" ? "fail" : "run"
+  const label = status === "passed" ? "passed" : status === "failed" ? "failed" : "in progress"
 
   return (
-    <Badge tone="warning">
-      <Clock size={14} aria-hidden />
+    <Badge tone={tone}>
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${
+          tone === "pass" ? "bg-[var(--pass)]" : tone === "fail" ? "bg-[var(--fail)]" : "bg-[var(--run)]"
+        }`}
+        aria-hidden
+      />
       {LANGUAGE_LABEL[language]}
+      <span className="sr-only">{label}</span>
     </Badge>
   )
 }

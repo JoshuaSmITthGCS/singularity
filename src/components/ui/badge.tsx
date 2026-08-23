@@ -1,14 +1,16 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-type BadgeTone = "neutral" | "success" | "warning" | "danger" | "info"
+type BadgeTone = "neutral" | "pass" | "run" | "fail" | "accent"
 
+// Tones map to verification state, so they carry meaning and shouldn't be
+// picked for looks. `neutral` is the only decorative one.
 const tones: Record<BadgeTone, string> = {
-  neutral: "border-border bg-muted text-muted-foreground",
-  success: "border-[#96cdbd] bg-[var(--success-soft)] text-[var(--success)]",
-  warning: "border-[#dfc27f] bg-[var(--warning-soft)] text-[var(--warning)]",
-  danger: "border-[#ef9aac] bg-[var(--danger-soft)] text-[var(--danger)]",
-  info: "border-[#9dbed0] bg-[var(--info-soft)] text-[var(--info)]",
+  neutral: "border-rule bg-sunken text-ink-3",
+  pass: "border-[var(--pass-rule)] bg-[var(--pass-soft)] text-[var(--pass)]",
+  run: "border-[var(--run-rule)] bg-[var(--run-soft)] text-[var(--run)]",
+  fail: "border-[var(--fail-rule)] bg-[var(--fail-soft)] text-[var(--fail)]",
+  accent: "border-[var(--accent-rule)] bg-[var(--accent-soft)] text-[var(--accent)]",
 }
 
 export function Badge({
@@ -19,7 +21,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex h-7 items-center gap-1 rounded-md border px-2.5 text-xs font-medium",
+        "tag inline-flex items-center gap-1 rounded-full border px-2 py-0.5 leading-5",
         tones[tone],
         className
       )}

@@ -38,19 +38,21 @@ export function AuthButton({ signedIn }: { signedIn: boolean }) {
     router.refresh()
   }
 
+  // Lives on the dark nav rail, so it uses the shell variant rather than the
+  // light-surface defaults.
   if (signedIn) {
     return (
-      <Button type="button" variant="secondary" size="sm" onClick={signOut}>
-        <LogOut size={16} aria-hidden />
+      <Button type="button" variant="shell" size="sm" className="w-full" onClick={signOut}>
+        <LogOut size={14} aria-hidden />
         Sign out
       </Button>
     )
   }
 
   return (
-    <Button type="button" size="sm" onClick={signIn}>
-      <LogIn size={16} aria-hidden />
-      {demoMode ? "Demo dashboard" : "Sign in"}
+    <Button type="button" variant="shell" size="sm" className="w-full" onClick={signIn}>
+      <LogIn size={14} aria-hidden />
+      {demoMode ? "Enter demo" : "Sign in with GitHub"}
     </Button>
   )
 }

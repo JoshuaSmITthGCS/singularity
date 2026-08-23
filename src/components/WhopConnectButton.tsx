@@ -41,7 +41,7 @@ export function WhopConnectButton({
         {loading ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Wallet size={16} aria-hidden />}
         {connected ? "Continue payment setup" : "Set up payouts"}
       </Button>
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--fail)]">{error}</p> : null}
     </div>
   )
 }
