@@ -52,12 +52,6 @@ export async function fulfillProcurement({
 
     if (deliveredError) throw deliveredError
 
-    const { data: developerProfile } = await admin
-      .from("profiles")
-      .select("total_earnings_cents")
-      .eq("id", asset.developer_id)
-      .single()
-
     await Promise.all([
       admin.from("payments").insert({
         procurement_id: procurement.id,
@@ -66,17 +60,14 @@ export async function fulfillProcurement({
         status: "paid",
         paid_at: new Date().toISOString(),
       }),
-      admin
-        .from("profiles")
-        .update({
-          total_earnings_cents:
-            Number(developerProfile?.total_earnings_cents ?? 0) + procurement.developer_share_cents,
-        })
-        .eq("id", asset.developer_id),
-      admin
-        .from("assets")
-        .update({ procurement_count: asset.procurement_count + 1 })
-        .eq("id", asset.id),
+      // Earnings and the sale counter increment inside one statement. Doing it
+      // as a read-modify-write here lost increments — and therefore real money
+      // — whenever two procurements settled concurrently.
+      admin.rpc("record_procurement_settlement", {
+        p_asset_id: asset.id,
+        p_developer_id: asset.developer_id,
+        p_developer_share_cents: procurement.developer_share_cents,
+      }),
     ])
 
     return delivered as Procurement

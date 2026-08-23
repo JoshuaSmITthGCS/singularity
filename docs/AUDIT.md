@@ -105,6 +105,11 @@ and align the two Dockerfiles on uid 1000.
 
 ## 2. Critical — "verified translation" does not verify what the pitch claims
 
+> **Status: claim corrected, mechanism still open.** `INVESTOR.md` §3 and §10 and
+> `CLAUDE.md` §13 now state what the badge actually attests. Building an
+> independent oracle is a design decision, not a mechanical fix — it is the top
+> near-term roadmap item. Finding stands.
+
 `INVESTOR.md` §3 states the moat plainly: *"Translation alone is a commodity;
 translation you can trust because the tests passed is the product."*
 
@@ -140,6 +145,10 @@ translated suite," which is honest and still useful.
 ---
 
 ## 3. High — the pricing formula cannot support the business it is attached to
+
+> **Status: documented, not changed.** The constants are a business decision and
+> picking a number is the founder's call, not this audit's. `INVESTOR.md` §7.2
+> and `CLAUDE.md` §8 now flag the ceiling and point here. Finding stands.
 
 `src/lib/pricing.ts` (mirrored in `worker/src/pricing.ts`) caps out at:
 
@@ -181,6 +190,11 @@ module. The data room and the code describe different businesses.
 
 ## 4. High — `quality_score` is decorative
 
+> **Status: fixed.** Rewritten in `worker/src/pricing.ts` around three inputs
+> that vary independently — verified base, log-scaled suite depth, and
+> cross-language portability — and re-scored after every variant rather than
+> only the source one. Covered by `worker/src/pricing.test.ts`.
+
 **Where:** `worker/src/pricing.ts` `computeQualityScore()`.
 
 The function reads as a 0–5 gradient driven by pass rate. It is not, because
@@ -212,6 +226,9 @@ cross-variant agreement.
 
 ## 5. Medium — demo-mode toggle is an OR, and the docs say AND
 
+> **Status: fixed.** `src/lib/demo-mode.ts` now requires both switches, matching
+> the documented and safer reading.
+
 **Where:** `src/lib/demo-mode.ts`.
 
 ```ts
@@ -233,6 +250,10 @@ Either make the code match the documented AND, or fix the doc. The AND is safer.
 ---
 
 ## 6. Medium — PostgREST filter injection in free-text search
+
+> **Status: fixed.** `freeTextFilter()` in `src/lib/marketplace/search.ts` quotes
+> the value so separators are literal, with escaping for quotes and backslashes.
+> Covered by `src/lib/marketplace/search.test.ts`.
 
 **Where:** `src/lib/marketplace/search.ts:38`, schema at
 `src/lib/validation.ts:54`.
@@ -261,6 +282,10 @@ interpolation, or use `.textSearch()` / an RPC with a bound parameter.
 
 ## 7. Medium — the advertised size limits are unreachable
 
+> **Status: fixed.** `max_tokens` raised 32000 → 64000 in
+> `worker/src/translator.ts`, which makes the existing 80k/80k publish caps
+> reachable. Streaming was already in use, so the higher ceiling costs nothing.
+
 `SOURCE_CODE_MAX_LENGTH` and `TEST_CODE_MAX_LENGTH` are both 80,000 characters
 (`src/lib/constants.ts:45`), and `createAssetSchema` accepts up to both.
 
@@ -281,6 +306,9 @@ the pipeline can actually honor.
 
 ## 8. Medium — mandatory tests are the real supply constraint
 
+> **Status: no code change — this is a market question, not a defect.** It is
+> hypothesis H2 in `docs/MARKET_RESEARCH_PROMPT.md`. Finding stands.
+
 `createAssetSchema` requires `test_code: z.string().min(1)`
 (`src/lib/validation.ts`). There is no path to publish without a test suite.
 
@@ -298,6 +326,8 @@ market research answers, because it bounds supply before demand ever matters.
 ---
 
 ## 9. Low — documentation drift
+
+> **Status: fixed.** All three statements corrected in `CLAUDE.md`.
 
 `CLAUDE.md` is otherwise accurate, but three statements no longer match:
 
@@ -341,17 +371,21 @@ market research answers, because it bounds supply before demand ever matters.
 
 1. ~~Parse `.trx` and gtest JSON; stop treating `null` as failure; align the
    C#/C++ image uids.~~ **Done** — see §1 and §12.
-2. Give verification an oracle independent of the translation, or restate the
-   badge honestly.
-3. Re-derive the pricing formula against real comparables and against measured
-   per-publish inference cost.
-4. Feed `quality_score` inputs that actually vary.
-5. Escape `q`; fix the demo-mode AND/OR; reconcile the size limits.
-6. Add pipeline tests — start with `runTests()` status resolution.
+2. ~~Restate the badge honestly~~ **done** — but **give verification an oracle
+   independent of the translation**. Still open, and still the highest-value
+   item in the codebase.
+3. **Re-derive the pricing formula** against real comparables and measured
+   per-publish inference cost. Still open — needs a founder's decision.
+4. ~~Feed `quality_score` inputs that actually vary.~~ **Done.**
+5. ~~Escape `q`; fix the demo-mode AND/OR; reconcile the size limits.~~ **Done.**
+6. ~~Add pipeline tests — start with `runTests()` status resolution.~~ **Done**
+   for the report/status path, pricing, and search filtering (47 tests, up from
+   21). Delivery, the API routes, and the translator remain untested.
 
-Findings 1, 4, 5, 6, 7, and 8 are mechanical and small. Findings 2 and 3 are
-design questions that should be settled before the next fundraising conversation,
-because they are what a technical diligence reviewer will probe first.
+Everything mechanical is fixed. What remains — findings 2, 3 and 8 — are a
+design decision, a business decision, and a market question respectively. They
+are what a technical diligence reviewer will probe first, and none of them can
+be honestly resolved by editing code.
 
 
 ---
@@ -403,5 +437,31 @@ the container writes to it as uid 1000. If the worker does not run as uid 1000
 equally and is not introduced here, but it is the next thing to check if a build
 stage fails with permission errors.
 
-Findings 2–8 are untouched. Finding 2 in particular still stands: the C# and C++
-badges now work, but what they attest to is unchanged.
+Finding 2 in particular still stands: the C# and C++ badges now work, but what
+they attest to is unchanged.
+
+## 13. Follow-up — the remaining mechanical fixes
+
+Findings 4, 5, 6, 7, 9 and the settlement race in §10 were fixed in the same
+pass. Two are worth calling out because they change behaviour beyond the defect:
+
+- **Settlement is now atomic.** `fulfillProcurement()` incremented
+  `total_earnings_cents` and `procurement_count` with a read-modify-write, so
+  concurrent purchases of the same asset silently dropped increments — real
+  money, quietly lost. Both now increment inside one statement via the
+  `record_procurement_settlement` RPC
+  (`supabase/migrations/20260602000000_atomic_settlement.sql`). **This migration
+  has not been applied against a live database** — no Supabase instance in this
+  environment.
+- **Quality scoring now runs after every variant**, not only the source one,
+  because portability is only knowable once siblings finish. Publishing stays a
+  one-way transition out of `verifying`, scoped by an `.eq("status",
+  "verifying")` guard so a re-score cannot resurrect an archived or flagged
+  asset.
+
+Also updated: the worker's default model moved from `claude-opus-4-8` to
+`claude-opus-5` (current generation, same $5/$25 pricing).
+
+**Unverifiable here, unchanged:** the Whop webhook signing scheme (§10) is still
+an inferred guess and needs one live test event to confirm. If it is wrong, no
+purchase is ever delivered.

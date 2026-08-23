@@ -109,7 +109,12 @@ export async function translateVariant(asset: Asset, targetLanguage: Language): 
   // Claude reason about the adaptation before emitting the result.
   const stream = client.messages.stream({
     model: workerConfig.anthropicModel,
-    max_tokens: 32000,
+    // 80k chars of code + 80k of tests (the publish caps in
+    // src/lib/constants.ts) is ~40k output tokens before thinking. At 32000
+    // a maxed-out asset always tripped the max_tokens guard below, so the
+    // advertised limits were unreachable. Streaming is already in use, so the
+    // larger ceiling costs nothing.
+    max_tokens: 64000,
     thinking: { type: "adaptive" },
     output_config: {
       effort: "medium",

@@ -45,12 +45,23 @@ A marketplace built around **AI translation + automated verification**:
    and engine-API mappings (e.g. Unity `Transform.Translate` → Godot
    `Node3D.translate`).
 3. **Verify automatically.** Each translated variant runs its tests inside an
-   isolated Docker sandbox. Only variants that **pass** are sold.
+   isolated Docker sandbox. Only variants that **pass** are sold — a variant
+   that fails to compile, or whose suite goes red, is never listed.
 4. **Buy with confidence.** Buyers see a green/yellow/red badge per language and
    purchase the variant for their engine, delivered as a GitHub PR or download.
 
-**The moat is verification.** Translation alone is a commodity; *translation you
-can trust because the tests passed* is the product.
+**The moat is verification.** Translation alone is a commodity; translation that
+has been compiled and exercised against a real suite in the target language,
+before anyone pays for it, is the product.
+
+**What the badge attests today — and what it does not.** The code and its tests
+are translated in the same model call, so a green badge proves the variant
+compiles and is *self-consistent* with its translated suite. It does not yet
+prove semantic equivalence with the original: an assertion the model weakened
+while translating would still go green. Closing that gap — pinning expected
+values from a source-language run, or differential-testing the variants against
+each other — is the highest-value item on the near-term roadmap (§9), and it is
+what turns a strong wedge into a durable one. See `docs/AUDIT.md` §2.
 
 ---
 
@@ -153,10 +164,18 @@ price = BASE × complexity_multiplier  +  quality_score × quality_bonus
         quality_bonus = $0.20 per quality point (score 0–5)
 ```
 
-A developer declares a complexity tier at publish; the **quality score is earned
-from verification results** (pass rate across the test suite) and the asset is
-repriced automatically once it passes. Higher-quality, more-complex assets price
-higher — automatically and defensibly.
+A developer declares a complexity tier at publish. The **quality score is earned
+from verification results**: a verified base, plus suite depth (log-scaled, so a
+thorough suite counts for more than a token one), plus **cross-language
+portability** — the share of sibling languages that reproduced the result.
+Portability is the signal this architecture is uniquely able to observe, and it
+rises as variants complete, so the asset is repriced as evidence arrives.
+
+**Open item:** the formula's ceiling is **$3.50 per asset** — well under the
+$20–$200 band comparable scripting assets command elsewhere, and thin against
+the per-publish inference cost of translating one asset into four languages.
+The constants have not been revisited against real comparables. See
+`docs/AUDIT.md` §3.
 
 ### 7.3 Why the margins are attractive
 - **Marginal cost per sale is near zero** — translation and verification happen
@@ -201,12 +220,17 @@ delivery** — translation quality plus pre-purchase proof is the wedge.
 - Client environment configuration
 - GitHub-PR and download delivery
 - Whop payments, connected accounts, and payouts
+- LLM auto-tagging (`llm_v1` tag versions)
 - Full demo mode for zero-dependency evaluation
 
 **Near term:**
-- LLM auto-tagging phase (writes the `llm_v1` tag versions the schema supports)
+- **Independent verification oracle** — pin expected values from a
+  source-language run, or differential-test variants against each other, so a
+  green badge attests semantic equivalence and not only self-consistency (§3)
+- Re-derive the pricing formula against real comparables and measured
+  per-publish inference cost (§7.2)
 - Ratings/reviews and richer asset analytics
-- Auto-retry and quality scoring improvements for failed variants
+- Auto-retry for failed variants
 
 **Later (architected for, intentionally deferred at MVP scale):**
 - ElasticSearch + semantic re-ranking for catalog-scale discovery
@@ -227,12 +251,14 @@ stresses.
 Singularity turns single-ecosystem game code into a cross-language, **verified**
 product. The technology pairs LLM translation with automated test verification
 so buyers get code that provably works in their engine. The economics are
-software-marketplace economics — near-zero marginal cost, a 25% platform take,
-and supply that compounds five-fold per asset. The hard, defensible part —
-engine-aware translation that you can trust because the tests passed — is built
-and working today.
+software-marketplace economics — near-zero marginal cost *per sale*, a 25%
+platform take, and supply that compounds five-fold per asset. The hard part —
+engine-aware translation, compiled and exercised in a sandbox across five
+languages before anything is listed — is built and working today. The pricing
+constants and the strength of the verification oracle are both open items,
+documented honestly in `docs/AUDIT.md`.
 
 ---
 
-*Prepared 2026-06-01. Projections marked (target) are illustrative. See
+*Prepared 2026-06-01, revised 2026-08-23. Projections marked (target) are illustrative. See
 `README.md` to run the product and `CLAUDE.md` for full technical detail.*
