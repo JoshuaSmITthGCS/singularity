@@ -39,19 +39,22 @@ export default function Home() {
               working original and re-tested in a sandbox before it was listed.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-2.5">
-              <Link href="/marketplace" className={buttonVariants({ size: "lg" })}>
-                Browse the marketplace
+              <Link href="/try-it" prefetch={false} className={buttonVariants({ size: "lg" })}>
+                Watch it verify live
                 <ArrowRight size={16} aria-hidden />
               </Link>
               <Link
-                href="/publish"
+                href="/marketplace"
                 className={buttonVariants({ variant: "secondary", size: "lg" })}
               >
-                Publish an asset
+                Browse the marketplace
               </Link>
             </div>
             <p className="mt-4 text-sm text-ink-3">
-              Creators keep {Math.round(DEVELOPER_SHARE_RATE * 100)}% of every sale.
+              Creators keep {Math.round(DEVELOPER_SHARE_RATE * 100)}% of every sale.{" "}
+              <Link href="/publish" prefetch={false} className="text-accent hover:underline">
+                Publish an asset
+              </Link>
             </p>
           </div>
 

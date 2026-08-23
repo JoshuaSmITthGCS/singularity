@@ -4,9 +4,15 @@ import path from "node:path"
 import { Writable } from "node:stream"
 import Docker from "dockerode"
 import { writeJobFiles } from "./deps.js"
+import { parseReport, resolveTestStatus, unverifiedNotice } from "./test-report.js"
 import type { Language, TestResult, TranslationDependencies } from "./types.js"
 
 const docker = new Docker()
+
+// Cold dependency restores (Maven, NuGet, a CMake configure+build) do not fit in
+// the 30s this used to allow; a timeout here surfaced as an opaque variant
+// failure.
+const INSTALL_TIMEOUT_MS = 180_000
 
 const imageByLanguage: Record<Language, string> = {
   javascript: "singularity-node-runner",
@@ -36,7 +42,7 @@ export async function runTests({
   await writeJobFiles({ dir: workspace, language, code, tests, dependencies })
 
   try {
-    if (hasDependencies(language, dependencies)) {
+    if (needsInstallStage(language, dependencies)) {
       const install = await runContainer({
         image: imageByLanguage[language],
         cmd: installCommand(language),
@@ -44,7 +50,7 @@ export async function runTests({
         reports,
         networkMode: "bridge",
         workspaceMode: "rw",
-        timeoutMs: 30_000,
+        timeoutMs: INSTALL_TIMEOUT_MS,
         memory: 256 * 1024 * 1024,
       })
 
@@ -65,32 +71,51 @@ export async function runTests({
       workspace,
       reports,
       networkMode: "none",
-      workspaceMode: language === "java" ? "rw" : "ro",
-      timeoutMs: 60_000,
+      workspaceMode: needsWritableWorkspace(language) ? "rw" : "ro",
+      timeoutMs: testTimeoutMs(language),
       memory: 512 * 1024 * 1024,
     })
 
     const parsed = await parseReport(language, reports)
-    const status = test.statusCode === 0 && parsed.failed === 0 ? "passed" : "failed"
+    const status = resolveTestStatus(test.statusCode, parsed)
 
     return {
       status,
       testsTotal: parsed.total,
       testsPassed: parsed.passed,
       testsFailed: parsed.failed,
-      output: test.output,
+      // Say so when the run was unverifiable rather than reporting it as a
+      // plain test failure — the two need different fixes.
+      output: parsed.failed === null ? `${test.output}\n\n${unverifiedNotice(language)}` : test.output,
     }
   } finally {
     await fs.rm(root, { recursive: true, force: true })
   }
 }
 
-function hasDependencies(language: Language, dependencies?: TranslationDependencies) {
-  if (language === "java") return true
-  if (language === "csharp") return Boolean(dependencies?.csproj)
-  if (language === "cpp") return Boolean(dependencies?.cmake)
+// Java, C# and C++ always need the install stage: writeJobFiles() writes a
+// pom.xml / .csproj / CMakeLists.txt for every job, so there is always a
+// restore-or-compile step to run whether or not the model returned a manifest
+// of its own. Gating C#/C++ on the model's optional manifest meant a job could
+// reach the test stage with nothing built. Node has its runners installed
+// globally in the image, so it only needs a stage when deps are declared.
+function needsInstallStage(language: Language, dependencies?: TranslationDependencies) {
+  if (language === "java" || language === "csharp" || language === "cpp") return true
 
   return Boolean(dependencies?.package_json)
+}
+
+// C# builds the project as part of `dotnet test`, so like Maven it cannot run
+// against a read-only bind mount. Network stays off for every test stage — that
+// is the boundary that matters.
+function needsWritableWorkspace(language: Language) {
+  return language === "java" || language === "csharp"
+}
+
+// C# compiles inside the test stage, so it needs more headroom than languages
+// that arrive pre-built. Everything else keeps the tighter runaway-code bound.
+function testTimeoutMs(language: Language) {
+  return language === "csharp" ? 120_000 : 60_000
 }
 
 function installCommand(language: Language) {
@@ -119,7 +144,11 @@ function testCommand(language: Language) {
   }
 
   if (language === "csharp") {
-    return ["sh", "-lc", "dotnet test --logger 'trx;LogFileName=/reports/test-results.trx'"]
+    return [
+      "sh",
+      "-lc",
+      "dotnet test --no-restore --results-directory /reports --logger 'trx;LogFileName=test-results.trx'",
+    ]
   }
 
   if (language === "cpp") {
@@ -127,64 +156,6 @@ function testCommand(language: Language) {
   }
 
   return ["sh", "-lc", "vitest run --reporter=json --outputFile=/reports/report.json"]
-}
-
-async function parseReport(language: Language, reports: string) {
-  const reportPath = path.join(reports, "report.json")
-
-  try {
-    const raw = await fs.readFile(reportPath, "utf8")
-    const report = JSON.parse(raw)
-
-    return {
-      total: report.numTotalTests ?? null,
-      passed: report.numPassedTests ?? null,
-      failed: report.numFailedTests ?? null,
-    }
-  } catch {
-    if (language === "java") {
-      return parseSurefireReports(reports)
-    }
-
-    return {
-      total: null,
-      passed: null,
-      failed: null,
-    }
-  }
-}
-
-async function parseSurefireReports(reports: string) {
-  const surefireDir = path.join(reports, "surefire-reports")
-
-  try {
-    const files = await fs.readdir(surefireDir)
-    const xmlReports = files.filter((file) => file.endsWith(".xml"))
-    let total = 0
-    let failed = 0
-
-    for (const file of xmlReports) {
-      const raw = await fs.readFile(path.join(surefireDir, file), "utf8")
-      const tests = Number(raw.match(/\btests="(\d+)"/)?.[1] ?? 0)
-      const failures = Number(raw.match(/\bfailures="(\d+)"/)?.[1] ?? 0)
-      const errors = Number(raw.match(/\berrors="(\d+)"/)?.[1] ?? 0)
-
-      total += tests
-      failed += failures + errors
-    }
-
-    return {
-      total,
-      passed: total - failed,
-      failed,
-    }
-  } catch {
-    return {
-      total: null,
-      passed: null,
-      failed: null,
-    }
-  }
 }
 
 async function runContainer({

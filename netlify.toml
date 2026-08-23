@@ -27,6 +27,9 @@
 # NEXT_PUBLIC_APP_URL - Your Netlify production URL
 # NEXT_PUBLIC_REAL_BACKEND - Set to true to disable demo mode in the browser
 # SINGULARITY_REAL_BACKEND - Set to true to disable demo mode on the server
+#   (both are required to leave demo mode; setting one alone stays on fixtures)
 # WHOP_API_KEY - Whop platform company API key (payments/payouts)
 # WHOP_WEBHOOK_SECRET - Secret for verifying Whop webhook signatures
 # WHOP_PLATFORM_COMPANY_ID - Platform parent company id (biz_...)
+# DEMO_SAMPLE_DEVELOPER_ID - A real profiles.id (sign in once via GitHub, then
+#   look it up in Supabase) that owns assets published through /try-it

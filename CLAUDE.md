@@ -193,9 +193,12 @@ singularity/
    produce an `adaptation_log`, PR notes, confidence, and dependency manifests.
 4. `runTests()` executes in the language's Docker image (install stage →
    network-off test stage). Result → variant `status: passed | failed` + counts.
-5. When the **source-language** variant passes and the asset is still
-   `verifying`, the worker computes a `quality_score` from the test results,
-   **reprices** the asset via the formula, and flips it to `published`.
+5. After **every** variant completes, the worker re-scores the asset: once the
+   source-language variant has passed it computes a `quality_score` from suite
+   depth and cross-language portability, reprices via the formula, and (only on
+   the transition out of `verifying`) flips the asset to `published` and runs
+   auto-tagging. Portability rises as sibling variants pass, so an asset that
+   translates cleanly earns its way up.
 
 ### 6.3 Marketplace, search, purchase
 - `/marketplace` lists `published` assets (`lib/marketplace/queries.ts`).
@@ -205,9 +208,12 @@ singularity/
   set when strict matches are thin.
 - `/marketplace/[assetId]` shows the summary; code stays hidden. The buy button
   is enabled only for `passed` variants.
-- `POST /api/procurements` validates the variant is `passed`, creates a
-  procurement, runs delivery inline (`lib/procurements`), splits revenue, records
-  payment, and updates developer earnings. Whop confirms payment via webhook.
+- `POST /api/procurements` validates the variant is `passed`, creates the
+  procurement in `awaiting_payment`, and returns a Whop checkout URL. Delivery
+  happens **after** payment: `POST /api/webhooks/whop` verifies the signature,
+  marks the procurement `paid`, and calls `fulfillProcurement()`
+  (`lib/procurements/fulfill.ts`), which delivers, records the payment row, and
+  settles earnings atomically via the `record_procurement_settlement` RPC.
 
 ### 6.4 Delivery
 - **GitHub PR:** opens a PR in the buyer's repo with translated code+tests and
@@ -258,6 +264,11 @@ always through the `marketplace_*` views, which omit code.
   Base `$0.50`; multipliers low/med/high = `1.0 / 2.5 / 5.0`; quality bonus
   `$0.20`/point on a 0–5 scale. Initial price uses complexity only; the worker
   adds the quality bonus after verification.
+  `quality_score` (`worker/src/pricing.ts`) = `2.0` verified base + up to `1.5`
+  for suite depth (log-scaled, saturating at 20 tests) + up to `1.5` for
+  cross-language portability (share of variants that passed).
+  **Note:** the formula ceiling is `$3.50` per asset. See `docs/AUDIT.md` §3 —
+  this is a business decision that has not been revisited, not a settled number.
 - **Revenue split (`src/lib/constants.ts`):** developer **70%**, platform
   **25%**, referral reserve **5%** (`DEVELOPER_SHARE_RATE` etc.). Applied in
   `lib/procurements` and `computeRevenueSplitCents`.
@@ -357,7 +368,8 @@ primary object on any surface describing an asset, not a decorative badge.
 
 ## 14. Status & deferred work
 
-**Implemented (MVP):** publish (paste + GitHub), Claude translation with
+**Implemented (MVP):** publish (paste + GitHub), LLM auto-tagging (`llm_v1` tag
+versions, `worker/src/tagger.ts`), Claude translation with
 engine-aware adaptation, Docker verification across all five languages,
 marketplace with verification badges, structured TagSchema + filtered search,
 formula pricing, client env config, GitHub PR + download delivery, Whop
@@ -366,8 +378,12 @@ payments/connected accounts/payouts, developer earnings, demo mode.
 **Deferred (described in the TRD, intentionally not built at MVP scale):**
 on-chain/blockchain contracts (only the data anchors exist), gVisor sandboxing,
 ElasticSearch + semantic re-ranking (search is Postgres array-overlap today),
-Kubernetes/microservice split, the LLM auto-tagging phase that writes `llm_v1`
-tag versions. See `INVESTOR.md` for the rationale and roadmap.
+Kubernetes/microservice split. See `INVESTOR.md` for the rationale and roadmap.
+
+**Known gaps:** see `docs/AUDIT.md`. The two that affect how you should read the
+product: translated tests are produced in the same model call as the translated
+code, so a passing variant demonstrates self-consistency rather than preserved
+semantics (§2); and the price ceiling is `$3.50` (§3). Both are open decisions.
 
 ---
 

@@ -7,6 +7,7 @@ import {
   LayoutGrid,
   Menu,
   Package,
+  Play,
   Search,
   Upload,
   X,
@@ -23,6 +24,7 @@ const SECTIONS: Array<{ label: string; items: NavItem[] }> = [
     label: "Procure",
     items: [
       { href: "/marketplace", label: "Marketplace", icon: Search, hint: "Browse verified assets" },
+      { href: "/try-it", label: "Try it live", icon: Play, hint: "Watch the pipeline run" },
       { href: "/procurements", label: "Deliveries", icon: Package, hint: "Your purchases" },
     ],
   },
