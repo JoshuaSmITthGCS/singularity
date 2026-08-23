@@ -9,9 +9,35 @@ WORKDIR /workspace
 # .csproj) — the global CLI tool was dead weight and its pinned version has
 # since been pulled from NuGet, failing the build outright.
 
-# Create a template test project structure
-RUN dotnet new xunit -n TestProject && \
-    rm -rf TestProject
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_NOLOGO=1 \
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+
+# Keep every writable dotnet path off the user's home directory. The container
+# runs as a uid this image does not pick (test-runner.ts forces 1000:1000), so
+# anything rooted at ~ is a guess — and a dotnet with no writable HOME fails the
+# restore before a single test runs. These paths work for any uid.
+ENV NUGET_PACKAGES=/opt/nuget-packages \
+    DOTNET_CLI_HOME=/tmp/dotnet-cli-home
+
+# Pre-warm the package cache with the exact set worker/src/deps.ts writes into a
+# generated Solution.csproj, so the sandbox's `dotnet restore` is a cache hit
+# instead of a cold download racing the install-stage timeout. World-writable so
+# a job whose .csproj asks for something extra can still restore it — this image
+# is an ephemeral, network-off sandbox, not a shared host.
+RUN mkdir -p "$NUGET_PACKAGES" /tmp/warmup \
+    && printf '%s\n' \
+      '<Project Sdk="Microsoft.NET.Sdk">' \
+      '  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>' \
+      '  <ItemGroup>' \
+      '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />' \
+      '    <PackageReference Include="xunit" Version="2.6.6" />' \
+      '    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.6" />' \
+      '  </ItemGroup>' \
+      '</Project>' > /tmp/warmup/warmup.csproj \
+    && dotnet restore /tmp/warmup/warmup.csproj \
+    && rm -rf /tmp/warmup \
+    && chmod -R 0777 "$NUGET_PACKAGES"
 
 # Set up non-root user for test execution. worker/src/test-runner.ts
 # hardcodes every container to run as uid:gid 1000:1000 (overriding whatever

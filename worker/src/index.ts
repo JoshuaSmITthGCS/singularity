@@ -79,29 +79,67 @@ async function processVariant(variantId: string, assetId: string, targetLanguage
     .eq("id", variantId)
     .throwOnError()
 
-  if (targetLanguage === asset.source_language && testResult.status === "passed" && asset.status === "verifying") {
-    // §7.4: derive a quality score from verification results and reprice the
-    // asset via the unit-economics formula (complexity tier + quality bonus).
-    const qualityScore = computeQualityScore(testResult)
-    const priceCents = computeAssetPriceCents({
-      complexity: (asset.complexity as Complexity) ?? "medium",
-      qualityScore,
+  await scoreAndPriceAsset(asset)
+
+  console.log(`Processed ${variantId}: ${testResult.status}`)
+}
+
+// §7.4: re-derive the quality score and price after every variant, not only the
+// source one. Cross-language portability is part of the score and only becomes
+// known as siblings finish, so an asset that translates cleanly into four other
+// languages earns its way up as the evidence arrives.
+async function scoreAndPriceAsset(asset: Asset) {
+  const { data: variants } = await supabase
+    .from("asset_variants")
+    .select("target_language, status, tests_total")
+    .eq("asset_id", asset.id)
+
+  if (!variants?.length) return
+
+  const source = variants.find((variant) => variant.target_language === asset.source_language)
+
+  // Nothing is priced or published until the asset proves itself in its own
+  // language. A failing source variant means there is no verified asset here.
+  if (source?.status !== "passed") return
+
+  const qualityScore = computeQualityScore({
+    sourceTestsTotal: source.tests_total,
+    variantsPassed: variants.filter((variant) => variant.status === "passed").length,
+    variantsTotal: variants.length,
+  })
+
+  // Score and price always; they stay accurate even for an asset an admin has
+  // since archived or flagged.
+  await supabase
+    .from("assets")
+    .update({
+      quality_score: qualityScore,
+      price_cents: computeAssetPriceCents({
+        complexity: (asset.complexity as Complexity) ?? "medium",
+        qualityScore,
+      }),
     })
+    .eq("id", asset.id)
+    .throwOnError()
 
-    await supabase
-      .from("assets")
-      .update({ status: "published", quality_score: qualityScore, price_cents: priceCents })
-      .eq("id", asset.id)
-      .throwOnError()
+  // Publishing is a one-way transition out of `verifying`. Scoping the update
+  // to that status keeps it idempotent across sibling variants and stops a
+  // re-score from resurrecting an archived or flagged asset.
+  await supabase
+    .from("assets")
+    .update({ status: "published" })
+    .eq("id", asset.id)
+    .eq("status", "verifying")
+    .throwOnError()
 
-    // Phase 1 auto-tagging: best-effort — a tagging failure must never block
-    // publishing, so log and move on rather than throwing.
+  // Phase 1 auto-tagging runs once, on that transition. `asset` was read when
+  // this job claimed the variant, so its status is the pre-transition one.
+  // Best-effort: a tagging failure must never block publishing.
+  if (asset.status === "verifying") {
     await generateAutoTags(asset)
       .then((tags) => (tags ? persistAutoTags(asset.id, tags) : undefined))
       .catch((error) => console.error(`Auto-tagging failed for ${asset.id}:`, error))
   }
-
-  console.log(`Processed ${variantId}: ${testResult.status}`)
 }
 
 function sleep(ms: number) {

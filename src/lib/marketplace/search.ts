@@ -37,9 +37,7 @@ export async function searchAssets(params: SearchQueryInput): Promise<{
     // §5.2.2: lightweight free-text — title/description/keywords. (Full semantic
     // re-ranking via ElasticSearch + cross-encoder is a later infra item.)
     if (params.q) {
-      query = query.or(
-        `title.ilike.%${params.q}%,short_description.ilike.%${params.q}%,summary.ilike.%${params.q}%`
-      )
+      query = query.or(freeTextFilter(params.q))
     }
 
     const { data, error } = await query
@@ -72,6 +70,20 @@ export async function searchAssets(params: SearchQueryInput): Promise<{
     console.error("Search is unavailable", error)
     return { results: [], expanded: [] }
   }
+}
+
+// PostgREST parses an `or=` argument as filter syntax, so a raw `q` containing
+// `,` `.` `(` or `)` escapes its own value and rewrites the query. Wrapping the
+// value in double quotes makes those characters literal; inside the quotes only
+// backslash and double-quote need escaping. Exported for its unit tests.
+export function freeTextFilter(q: string) {
+  const value = quoteFilterValue(`%${q}%`)
+
+  return ["title", "short_description", "summary"].map((column) => `${column}.ilike.${value}`).join(",")
+}
+
+function quoteFilterValue(value: string) {
+  return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`
 }
 
 // Demo fixtures only carry freeform display tags (a.tags), not the controlled
