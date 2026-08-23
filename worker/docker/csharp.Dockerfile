@@ -3,11 +3,11 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0
 
 WORKDIR /workspace
 
-# Install xUnit test runner globally
-RUN dotnet tool install --global dotnet-xunit --version 2.6.6
-
-# Add dotnet tools to PATH
-ENV PATH="${PATH}:/root/.dotnet/tools"
+# Note: no dotnet-xunit global tool here. Test execution uses `dotnet test`
+# (worker/src/test-runner.ts) against the xunit / xunit.runner.visualstudio
+# NuGet packages referenced per-project (worker/src/deps.ts generates the
+# .csproj) — the global CLI tool was dead weight and its pinned version has
+# since been pulled from NuGet, failing the build outright.
 
 # Create a template test project structure
 RUN dotnet new xunit -n TestProject && \
