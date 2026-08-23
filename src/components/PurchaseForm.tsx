@@ -6,6 +6,7 @@ import { Check, Download, GitPullRequest, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select } from "@/components/ui/select"
 import { LANGUAGE_LABEL } from "@/lib/constants"
 import { isDemoMode } from "@/lib/demo-mode"
 import type { DeliveryMethod, MarketplaceVariant } from "@/types/database"
@@ -128,24 +129,24 @@ export function PurchaseForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor="variant">Verified target</Label>
-        <select
+        <Select
           id="variant"
           value={variantId}
           onChange={(event) => setVariantId(event.target.value)}
-          className="h-10 w-full rounded-md border border-border bg-panel px-3 text-sm"
         >
           {passedVariants.map((variant) => (
             <option key={variant.id} value={variant.id}>
               {LANGUAGE_LABEL[variant.target_language]}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <button
           type="button"
           onClick={() => setDeliveryMethod("download")}
+          aria-pressed={deliveryMethod === "download"}
           className={`flex items-center gap-3 rounded-lg border p-4 text-left ${
             deliveryMethod === "download" ? "border-primary bg-[var(--primary-soft)]" : "border-border bg-panel"
           }`}
@@ -159,6 +160,7 @@ export function PurchaseForm({
         <button
           type="button"
           onClick={() => setDeliveryMethod("github_pr")}
+          aria-pressed={deliveryMethod === "github_pr"}
           className={`flex items-center gap-3 rounded-lg border p-4 text-left ${
             deliveryMethod === "github_pr" ? "border-primary bg-[var(--primary-soft)]" : "border-border bg-panel"
           }`}
@@ -223,10 +225,20 @@ export function PurchaseForm({
           ) : null}
           {result.download_payload ? (
             <div className="grid gap-3">
-              <pre className="max-h-72 overflow-auto rounded-md bg-[var(--code)] p-4 text-xs text-white">
+              <pre
+                tabIndex={0}
+                role="region"
+                aria-label="Adapted source code"
+                className="surface-dark max-h-72 overflow-auto rounded-md bg-[var(--code)] p-4 text-xs text-white"
+              >
                 {result.download_payload.translated_code}
               </pre>
-              <pre className="max-h-72 overflow-auto rounded-md bg-[var(--code)] p-4 text-xs text-white">
+              <pre
+                tabIndex={0}
+                role="region"
+                aria-label="Adapted tests"
+                className="surface-dark max-h-72 overflow-auto rounded-md bg-[var(--code)] p-4 text-xs text-white"
+              >
                 {result.download_payload.translated_tests}
               </pre>
             </div>

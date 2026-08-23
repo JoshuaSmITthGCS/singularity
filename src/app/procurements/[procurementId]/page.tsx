@@ -106,7 +106,12 @@ function CodeBlock({ title, value }: { title: string; value: string }) {
   return (
     <section>
       <h2 className="mb-2 text-lg font-semibold">{title}</h2>
-      <pre className="max-h-[520px] overflow-auto rounded-lg bg-[var(--code)] p-4 text-xs text-white">
+      <pre
+        tabIndex={0}
+        role="region"
+        aria-label={title}
+        className="surface-dark max-h-[520px] overflow-auto rounded-lg bg-[var(--code)] p-4 text-xs text-white"
+      >
         {value}
       </pre>
     </section>

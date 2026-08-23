@@ -28,7 +28,7 @@ const trustSignals: Array<[LucideIcon, string, string]> = [
 export default function Home() {
   return (
     <main>
-      <section className="relative overflow-hidden border-b border-[#26342d] bg-[var(--code)] text-white">
+      <section className="surface-dark relative overflow-hidden border-b border-[#26342d] bg-[var(--code)] text-white">
         <div className="pointer-events-none absolute inset-y-8 right-0 hidden w-[56%] max-w-3xl opacity-80 lg:block">
           <div className="absolute right-8 top-8 w-[420px] rounded-lg border border-white/10 bg-white/5 p-4 shadow-2xl">
             <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3 text-sm">

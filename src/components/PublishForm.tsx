@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Check, FileCode2, Github, Loader2 } from "lucide
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
   LANGUAGES,
@@ -214,7 +215,7 @@ export function PublishForm() {
             className={`h-16 rounded-lg border px-3 text-left transition ${
               index <= currentStepIndex ? "border-primary bg-[var(--primary-soft)]" : "border-border bg-panel"
             }`}
-            aria-label={item}
+            aria-current={step === item ? "step" : undefined}
           >
             <span className="block text-xs text-muted-foreground">0{index + 1}</span>
             <span className="block text-sm font-medium">{stepLabel[item]}</span>
@@ -228,6 +229,7 @@ export function PublishForm() {
             <button
               type="button"
               onClick={() => setMode("paste")}
+              aria-pressed={mode === "paste"}
               className={`flex items-center gap-3 rounded-lg border p-4 text-left ${
                 mode === "paste" ? "border-primary bg-[var(--primary-soft)]" : "border-border bg-panel"
               }`}
@@ -241,6 +243,7 @@ export function PublishForm() {
             <button
               type="button"
               onClick={() => setMode("github")}
+              aria-pressed={mode === "github"}
               className={`flex items-center gap-3 rounded-lg border p-4 text-left ${
                 mode === "github" ? "border-primary bg-[var(--primary-soft)]" : "border-border bg-panel"
               }`}
@@ -255,18 +258,17 @@ export function PublishForm() {
 
           <div className="space-y-2">
             <Label htmlFor="language">Source language</Label>
-            <select
+            <Select
               id="language"
               value={language}
               onChange={(event) => setLanguage(event.target.value as Language)}
-              className="h-10 w-full rounded-md border border-border bg-panel px-3 text-sm"
             >
               {LANGUAGES.map((item) => (
                 <option key={item} value={item}>
                   {LANGUAGE_LABEL[item]}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {mode === "github" ? (
@@ -280,18 +282,17 @@ export function PublishForm() {
               {repoError ? <p className="text-sm text-danger">{repoError}</p> : null}
               <div className="space-y-2">
                 <Label htmlFor="repo">Repository</Label>
-                <select
+                <Select
                   id="repo"
                   value={repo}
                   onChange={(event) => setRepo(event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-panel px-3 text-sm"
                 >
                   {repos.map((item) => (
                     <option key={item.id} value={item.full_name}>
                       {item.full_name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                 <div className="space-y-2">
@@ -388,18 +389,17 @@ export function PublishForm() {
       {step === "price" ? (
         <section className="space-y-3">
           <Label htmlFor="complexity">Complexity tier</Label>
-          <select
+          <Select
             id="complexity"
             value={complexity}
             onChange={(event) => setComplexity(event.target.value as Complexity)}
-            className="h-10 w-full rounded-md border border-border bg-panel px-3 text-sm"
           >
             {COMPLEXITY_LEVELS.map((level) => (
               <option key={level} value={level}>
                 {level[0].toUpperCase() + level.slice(1)}
               </option>
             ))}
-          </select>
+          </Select>
           <p className="text-sm text-muted-foreground">
             Pricing is computed from the platform unit-economics formula (complexity tier + verified
             quality score), not set manually. Estimated starting price:{" "}
