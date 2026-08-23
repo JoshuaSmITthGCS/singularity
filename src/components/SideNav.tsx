@@ -9,6 +9,7 @@ import {
   Package,
   Play,
   Search,
+  ShieldAlert,
   Upload,
   X,
 } from "lucide-react"
@@ -37,9 +38,29 @@ const SECTIONS: Array<{ label: string; items: NavItem[] }> = [
   },
 ]
 
-export function SideNav({ signedIn, demoMode }: { signedIn: boolean; demoMode: boolean }) {
+export function SideNav({
+  signedIn,
+  demoMode,
+  isAdmin,
+}: {
+  signedIn: boolean
+  demoMode: boolean
+  isAdmin: boolean
+}) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+
+  const sections = isAdmin
+    ? [
+        ...SECTIONS,
+        {
+          label: "Admin",
+          items: [
+            { href: "/admin", label: "All assets", icon: ShieldAlert, hint: "Every upload, full source" },
+          ],
+        },
+      ]
+    : SECTIONS
 
   // A route change means the mobile drawer has done its job.
   useEffect(() => {
@@ -75,7 +96,7 @@ export function SideNav({ signedIn, demoMode }: { signedIn: boolean; demoMode: b
         </div>
 
         <div className="flex-1 overflow-y-auto px-2 py-4">
-          {SECTIONS.map((section) => (
+          {sections.map((section) => (
             <div key={section.label} className="mb-5">
               <p className="tag px-2 pb-1.5 text-shell-ink-2">{section.label}</p>
               <ul className="space-y-0.5">

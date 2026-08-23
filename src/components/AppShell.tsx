@@ -1,10 +1,12 @@
 import { SideNav } from "@/components/SideNav"
+import { isAdminUser } from "@/lib/admin"
 import { isDemoMode } from "@/lib/demo-mode"
 import { createClient } from "@/lib/supabase/server"
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const demoMode = isDemoMode()
   let signedIn = false
+  let isAdmin = false
 
   if (!demoMode) {
     try {
@@ -13,6 +15,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         data: { user },
       } = await supabase.auth.getUser()
       signedIn = Boolean(user)
+      isAdmin = isAdminUser(user?.id)
     } catch {
       signedIn = false
     }
@@ -22,7 +25,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   // otherwise show canvas beneath it — paint the column dark.
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_1fr] lg:bg-shell">
-      <SideNav signedIn={signedIn} demoMode={demoMode} />
+      <SideNav signedIn={signedIn} demoMode={demoMode} isAdmin={isAdmin} />
       <div id="main-content" tabIndex={-1} className="min-w-0 bg-canvas">
         {children}
       </div>

@@ -31,6 +31,46 @@ const STATUS_LABEL: Record<VariantStatus, string> = {
   failed: "Failed",
 }
 
+// Rough position through the pipeline, purely for the progress bar's fill —
+// not a real percentage of work done, just enough to show forward motion.
+const STAGE_PERCENT: Record<VariantStatus, number> = {
+  queued: 8,
+  translating: 45,
+  testing: 75,
+  passed: 100,
+  failed: 100,
+}
+
+const STAGE_TONE: Record<VariantStatus, "run" | "pass" | "fail"> = {
+  queued: "run",
+  translating: "run",
+  testing: "run",
+  passed: "pass",
+  failed: "fail",
+}
+
+function ProgressBar({ status }: { status: VariantStatus }) {
+  const tone = STAGE_TONE[status]
+  const color =
+    tone === "pass" ? "var(--pass)" : tone === "fail" ? "var(--fail)" : "var(--run)"
+
+  return (
+    <div
+      role="progressbar"
+      aria-valuenow={STAGE_PERCENT[status]}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={STATUS_LABEL[status]}
+      className="h-1.5 w-full overflow-hidden rounded-full bg-sunken"
+    >
+      <div
+        className="h-full rounded-full transition-[width] duration-500 ease-out"
+        style={{ width: `${STAGE_PERCENT[status]}%`, backgroundColor: color }}
+      />
+    </div>
+  )
+}
+
 export function TryItDemo() {
   return (
     <div className="grid gap-10 lg:grid-cols-2">
@@ -48,11 +88,22 @@ function SellerDemo() {
   const [error, setError] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Liveness proof: a static spinner is indistinguishable from a fake one,
+  // especially during the first few seconds before the worker's own poll
+  // loop claims the job. A ticking elapsed clock and a rising check count
+  // can only move if a real request is actually landing.
+  const [startedAt, setStartedAt] = useState<number | null>(null)
+  const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null)
+  const [checkCount, setCheckCount] = useState(0)
+  const [now, setNow] = useState<number | null>(null)
+  const clockRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   const snippet = DEMO_SNIPPETS.find((s) => s.id === snippetId) ?? DEMO_SNIPPETS[0]
 
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
+      if (clockRef.current) clearInterval(clockRef.current)
     }
   }, [])
 
@@ -60,6 +111,14 @@ function SellerDemo() {
     setLoading(true)
     setError(null)
     setStatus(null)
+    setCheckCount(0)
+    const startTime = Date.now()
+    setStartedAt(startTime)
+    setLastCheckedAt(null)
+    setNow(startTime)
+
+    if (clockRef.current) clearInterval(clockRef.current)
+    clockRef.current = setInterval(() => setNow(Date.now()), 1000)
 
     try {
       const response = await fetch("/api/demo/publish", {
@@ -72,6 +131,7 @@ function SellerDemo() {
       if (!response.ok || payload.error) {
         setError(payload.error ?? "Could not start the demo")
         setLoading(false)
+        if (clockRef.current) clearInterval(clockRef.current)
         return
       }
 
@@ -80,6 +140,7 @@ function SellerDemo() {
     } catch {
       setError("Network error")
       setLoading(false)
+      if (clockRef.current) clearInterval(clockRef.current)
     }
   }
 
@@ -90,13 +151,21 @@ function SellerDemo() {
         const payload = await response.json()
         if (!response.ok || payload.error) return
         setStatus(payload.data)
+        setLastCheckedAt(Date.now())
+        setCheckCount((count) => count + 1)
 
         const done = (payload.data.variants as DemoVariant[]).every(
           (v) => v.status === "passed" || v.status === "failed"
         )
-        if (done && pollRef.current) {
-          clearInterval(pollRef.current)
-          pollRef.current = null
+        if (done) {
+          if (pollRef.current) {
+            clearInterval(pollRef.current)
+            pollRef.current = null
+          }
+          if (clockRef.current) {
+            clearInterval(clockRef.current)
+            clockRef.current = null
+          }
           setLoading(false)
         }
       } catch {
@@ -107,6 +176,9 @@ function SellerDemo() {
     tick()
     pollRef.current = setInterval(tick, 3000)
   }
+
+  const allQueued = status?.variants.every((v) => v.status === "queued") ?? false
+  const elapsedSeconds = startedAt && now ? Math.floor((now - startedAt) / 1000) : 0
 
   return (
     <section className="rounded border border-rule bg-surface p-5">
@@ -156,23 +228,39 @@ function SellerDemo() {
 
       {status && (
         <div className="mt-5 space-y-3 border-t border-rule pt-4">
-          <p className="text-xs text-ink-3">
-            Translating {LANGUAGE_LABEL[status.asset.source_language]} source into every target
-            language — this typically takes 1–3 minutes.
-          </p>
-          <div className="grid gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-ink-3">
+              Translating {LANGUAGE_LABEL[status.asset.source_language]} source into every target
+              language — this typically takes 1–3 minutes.
+            </p>
+            {/* Proof this is live, not a decorative spinner: the clock and
+                check count can only move if real requests are landing. */}
+            <p className="mono tabular text-xs text-ink-4">
+              {elapsedSeconds}s elapsed · checked {checkCount}×
+              {lastCheckedAt ? ` · last check ${Math.max(0, Math.floor(((now ?? Date.now()) - lastCheckedAt) / 1000))}s ago` : ""}
+            </p>
+          </div>
+          {allQueued && elapsedSeconds > 8 && (
+            <p className="rounded border border-[var(--run-rule)] bg-[var(--run-soft)] px-2.5 py-1.5 text-xs text-[var(--run)]">
+              Still queued — waiting for the worker process to claim this job. If it stays queued
+              past ~30s, the worker may be offline.
+            </p>
+          )}
+          <div className="grid gap-2.5">
             {status.variants.map((v) => (
-              <div
-                key={v.target_language}
-                className="flex items-center justify-between rounded-md border border-rule px-3 py-2"
-              >
-                <LanguageBadge language={v.target_language} status={v.status} />
-                <span className="text-xs text-ink-3">
-                  {STATUS_LABEL[v.status]}
-                  {v.status === "passed" && v.tests_total != null
-                    ? ` · ${v.tests_passed}/${v.tests_total} tests`
-                    : ""}
-                </span>
+              <div key={v.target_language} className="rounded-md border border-rule px-3 py-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <LanguageBadge language={v.target_language} status={v.status} />
+                  <span className="text-xs text-ink-3">
+                    {STATUS_LABEL[v.status]}
+                    {v.status === "passed" && v.tests_total != null
+                      ? ` · ${v.tests_passed}/${v.tests_total} tests`
+                      : ""}
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <ProgressBar status={v.status} />
+                </div>
               </div>
             ))}
           </div>
