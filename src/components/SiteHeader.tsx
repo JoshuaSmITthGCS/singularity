@@ -36,6 +36,9 @@ export async function SiteHeader() {
           <Link href="/marketplace" prefetch={false} className="hover:text-foreground">
             Search
           </Link>
+          <Link href="/try-it" prefetch={false} className="hover:text-foreground">
+            Try it
+          </Link>
           <Link href="/publish" prefetch={false} className="hover:text-foreground">
             Publish
           </Link>

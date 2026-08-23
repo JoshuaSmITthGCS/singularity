@@ -70,8 +70,15 @@ export type Asset = {
   whop_product_id: string | null
   view_count: number
   procurement_count: number
+  is_demo_sample: boolean
   created_at: string
   updated_at: string
+}
+
+export type DemoPublishLog = {
+  id: string
+  ip: string
+  created_at: string
 }
 
 // §4.5 versioned structured tags.
@@ -240,6 +247,7 @@ export type Database = {
           | "quality_score"
           | "content_hash"
           | "blockchain_uid"
+          | "is_demo_sample"
         > &
           Partial<
             Pick<
@@ -255,6 +263,7 @@ export type Database = {
               | "quality_score"
               | "content_hash"
               | "blockchain_uid"
+              | "is_demo_sample"
             >
           >
       >
@@ -301,6 +310,10 @@ export type Database = {
       payments: Table<
         Payment,
         Omit<Payment, "id" | "created_at"> & Partial<Pick<Payment, "id" | "created_at">>
+      >
+      demo_publish_log: Table<
+        DemoPublishLog,
+        Omit<DemoPublishLog, "id" | "created_at"> & Partial<Pick<DemoPublishLog, "id" | "created_at">>
       >
     }
     Views: {

@@ -13,7 +13,7 @@ import {
 import { buttonVariants } from "@/components/ui/button"
 
 const steps: Array<[LucideIcon, string, string]> = [
-  [GitBranch, "Publish", "Creators submit TypeScript, JavaScript, or Java assets with tests."],
+  [GitBranch, "Publish", "Creators submit TypeScript, JavaScript, Java, C#, or C++ assets with tests."],
   [Search, "Search", "Clients search by purpose, tags, and verified language compatibility."],
   [Languages, "Adapt", "The worker preserves behavior and checks the selected target."],
   [BadgeCheck, "Ship", "Passing procurements deliver as a download or GitHub PR."],
@@ -69,12 +69,15 @@ export default function Home() {
               Singularity
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-white/75">
-              Turn proven scripts into reusable infrastructure. Creators publish once, clients search by need, and the platform adapts verified assets across TypeScript, JavaScript, and Java.
+              Turn proven scripts into reusable infrastructure. Creators publish once, clients search by need, and the platform adapts verified assets across TypeScript, JavaScript, Java, C#, and C++.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/marketplace" prefetch={false} className={buttonVariants({ size: "lg" })}>
-                Browse marketplace
+              <Link href="/try-it" prefetch={false} className={buttonVariants({ size: "lg" })}>
+                Watch it verify live
                 <ArrowRight size={18} aria-hidden />
+              </Link>
+              <Link href="/marketplace" prefetch={false} className={buttonVariants({ variant: "secondary", size: "lg" })}>
+                Browse marketplace
               </Link>
               <Link href="/publish" prefetch={false} className={buttonVariants({ variant: "secondary", size: "lg" })}>
                 Publish an asset
