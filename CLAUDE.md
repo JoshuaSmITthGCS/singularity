@@ -49,7 +49,8 @@ of the TRD and `worker/src/translator.ts`).
 
 **Frontend & API** — Next.js 15.5 (App Router, Turbopack), React 19, TypeScript
 (strict), Tailwind CSS 4, shadcn-style primitives in `src/components/ui`,
-`lucide-react` icons. Validation with **Zod 4**.
+`lucide-react` icons. Validation with **Zod 4**. Type is Newsreader (editorial
+display), Archivo (UI), JetBrains Mono (data/code), loaded via `next/font`.
 
 **Database & Auth** — Supabase (Postgres + Auth + Row-Level Security). GitHub
 OAuth as the auth provider. Generated types in `src/types/database.ts`.
@@ -118,13 +119,17 @@ singularity/
 │   │       └── ready/                    # readiness probe (TRD §2.1)
 │   │
 │   ├── components/                       # React components
-│   │   ├── ui/                           # primitives (button, input, ...)
-│   │   ├── AssetCard, LanguageBadge      # marketplace cards + status badges
+│   │   ├── ui/                           # primitives (button, input, select, ...)
+│   │   ├── AppShell, SideNav             # app shell + persistent nav rail
+│   │   ├── PageHeader                    # PageHeader / Page / Panel / EmptyState
+│   │   ├── Verification                  # VerificationMatrix + VerificationStrip
+│   │   ├── AssetCard, SearchResultCard   # marketplace list rows
+│   │   ├── LanguageBadge, ProcurementStatus
 │   │   ├── PublishForm                   # publish wizard (source→catalog→pricing→verify)
-│   │   ├── PurchaseForm, ProcurementStatus
+│   │   ├── PurchaseForm
 │   │   ├── MarketplaceSearch             # search/filter UI
 │   │   ├── WhopConnectButton, WhopPayoutsButton, GitHubInstallButton
-│   │   └── SiteHeader, AuthButton, ServiceNotice
+│   │   └── AuthButton, ServiceNotice
 │   │
 │   ├── lib/
 │   │   ├── supabase/                     # client / server / admin / middleware
@@ -298,19 +303,51 @@ pnpm exec tsc --noEmit
 
 ---
 
-## 11. Code style & conventions
+## 11. Design system (`src/app/globals.css`)
+
+The interface argues the product's claim: nothing ships to a buyer until it has
+compiled and passed its tests in their language. So the verification run is the
+primary object on any surface describing an asset, not a decorative badge.
+
+- **Status color is load-bearing.** `--pass` / `--run` / `--fail` encode
+  verification state. Never reach for them for emphasis, and never signal state
+  with any other color.
+- **Render the evidence.** `asset_variants` carries `tests_passed` /
+  `tests_total` / `status`. Surfaces that describe an asset use
+  `VerificationMatrix` (full panel) or `VerificationStrip` (inline), which show
+  real counts and the actual pipeline phase — never a generic spinner.
+- **Cascade layers matter.** Element resets go in `@layer base`, helper classes
+  (`.display`, `.mono`, `.tag`, `.tabular`) in `@layer components`. Unlayered
+  rules beat *every* layered Tailwind utility — a bare `a { color: inherit }`
+  silently kills `text-white` on a button. Only the focus rules are
+  deliberately unlayered, so nothing can override them.
+- **Focus rings.** One global `:focus-visible` rule owns the indicator; do not
+  add per-component rings. To change the ring on a dark surface or a variant,
+  re-point `--focus-ring` (`.surface-dark`, or
+  `[--focus-ring:var(--fail)]`). Any ring must clear 3:1 against what sits
+  behind it (WCAG 2.2 §1.4.11), and every ink step clears 4.5:1 on `--surface`,
+  `--canvas` and `--sunken`.
+- **Verify contrast in a browser, not by eye.** Composite color and backdrop to
+  sRGB so `oklab()` and alpha resolve correctly.
+
+---
+
+## 12. Code style & conventions
 
 - TypeScript strict; **no semicolons**; functional React components.
 - Server Components by default; add `"use client"` only when needed.
 - Comments in active voice, sparing, explaining *why*. Reference TRD sections
   (e.g. `§7.4`) when a rule comes from the spec.
 - Keep the **demo-mode branch first** in every route/loader.
-- Tailwind for styling; reuse `components/ui` primitives.
+- Tailwind for styling; reuse `components/ui` primitives and the
+  `PageHeader` / `Page` / `Panel` layout components so routes share one
+  masthead grammar. Use design tokens (`ink`, `rule`, `surface`, `sunken`,
+  `accent`, `pass`/`run`/`fail`) — never raw hex in a component.
 - Commit style: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`.
 
 ---
 
-## 12. Operational endpoints
+## 13. Operational endpoints
 
 - `GET /api/health` — liveness (process up).
 - `GET /api/ready` — readiness (required config present; 503 if not).
@@ -318,7 +355,7 @@ pnpm exec tsc --noEmit
 
 ---
 
-## 13. Status & deferred work
+## 14. Status & deferred work
 
 **Implemented (MVP):** publish (paste + GitHub), Claude translation with
 engine-aware adaptation, Docker verification across all five languages,
@@ -334,4 +371,4 @@ tag versions. See `INVESTOR.md` for the rationale and roadmap.
 
 ---
 
-**Last updated:** 2026-06-01 · **Version:** 1.0 (MVP)
+**Last updated:** 2026-08-23 · **Version:** 1.1 (MVP)
