@@ -291,6 +291,27 @@ After B2/B3 are corrected and deployed:
 
 ---
 
+# SECTION C — Optional: Wake-on-LAN utility
+
+`/wol` (and `POST /api/wol`) is a personal utility bolted onto the site, unrelated
+to the marketplace product — it lets the admin account send a WOL magic packet to
+wake a home PC for live demos. Restricted to `ADMIN_USER_ID`, same gate as `/admin`.
+
+**Requires:** your home router forwarding a UDP port to its local broadcast address
+(consult your router's docs — often called "WOL forwarding" or a port forward to
+`x.x.x.255`), since a magic packet doesn't route past the LAN on its own.
+
+**Env vars** (set alongside the others in A4, frontend host only — not the worker):
+```
+WOL_TARGET_HOST=<your home's public IP or DDNS hostname>   🟢-ish (not secret, but env only)
+WOL_TARGET_PORT=9                                            (or whatever port you forward)
+WOL_TARGET_MAC=AA:BB:CC:DD:EE:FF                              (target PC's MAC address)
+```
+Leave unset to leave the feature disabled — the route 500s with `MISCONFIGURED` until
+all three are set correctly.
+
+---
+
 # ✅ PASTE‑BACK TEMPLATE (fill in only the 🟢 values, then send to Claude)
 
 > Do **not** put any 🔴 secret here. Those go straight into Netlify / your worker host.

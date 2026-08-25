@@ -8,6 +8,7 @@ import {
   Menu,
   Package,
   Play,
+  Power,
   Search,
   ShieldAlert,
   Upload,
@@ -57,6 +58,7 @@ export function SideNav({
           label: "Admin",
           items: [
             { href: "/admin", label: "All assets", icon: ShieldAlert, hint: "Every upload, full source" },
+            { href: "/wol", label: "Wake PC", icon: Power, hint: "Wake-on-LAN for demos" },
           ],
         },
       ]
