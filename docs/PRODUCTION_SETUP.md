@@ -310,6 +310,35 @@ WOL_TARGET_MAC=AA:BB:CC:DD:EE:FF                              (target PC's MAC a
 Leave unset to leave the feature disabled — the route 500s with `MISCONFIGURED` until
 all three are set correctly.
 
+**Router setup — TP-Link Archer AX21, target PC running Windows:**
+
+1. **Reserve a static LAN IP for the PC** — Advanced → Network → DHCP Server →
+   Address Reservation. Bind its MAC to a fixed IP.
+2. **Port forward to the LAN broadcast address** — Advanced → NAT Forwarding →
+   Virtual Servers → Add:
+   - Service Type: Custom
+   - External Port: `9` (must match `WOL_TARGET_PORT`)
+   - Internal IP: `192.168.0.255` (your LAN's broadcast address — check the Archer's
+     Network Map if your subnet isn't `192.168.0.x`)
+   - Internal Port: `9`
+   - Protocol: UDP
+
+   If the firmware rejects a `.255` internal IP, forward to the PC's reserved IP
+   from step 1 instead — unicast delivery works for WOL in most setups since the
+   switch already has that IP/MAC pair bound to a port.
+3. **Set up Dynamic DNS** — Advanced → Network → Dynamic DNS (TP-Link's built-in
+   DDNS or No-IP) — so `WOL_TARGET_HOST` survives the home IP changing. Use the
+   DDNS hostname as `WOL_TARGET_HOST`.
+4. **Enable WOL on the Windows PC:**
+   - Device Manager → network adapter → Properties → Power Management → check
+     "Allow this device to wake the computer."
+   - Same dialog, Advanced tab → "Wake on Magic Packet" → Enabled.
+   - Control Panel → Power Options → "Choose what the power buttons do" →
+     disable **Fast Startup**. Fast Startup hibernates instead of a true
+     shutdown on most boards, which blocks WOL from a fully "off" state.
+   - Confirm Wake-on-LAN is enabled in BIOS/UEFI (varies by motherboard —
+     usually under Power Management, "Resume by PCI-E/PME" or similar).
+
 ---
 
 # ✅ PASTE‑BACK TEMPLATE (fill in only the 🟢 values, then send to Claude)
