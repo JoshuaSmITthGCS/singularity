@@ -8,14 +8,33 @@ import { computeAssetPriceCents, computeQualityScore, type Complexity } from "./
 import type { Asset } from "./types.js"
 
 async function main() {
-  console.log(`Singularity worker ${workerConfig.workerId} started`)
+  console.log(
+    `Singularity worker ${workerConfig.workerId} started (concurrency=${workerConfig.concurrency})`
+  )
 
+  // Each slot runs its own independent claim loop. claim_next_variant's
+  // FOR UPDATE SKIP LOCKED already makes concurrent claiming safe (it's the
+  // same mechanism that lets multiple separate worker hosts share the queue),
+  // so N slots in one process is just that same safety used to run a single
+  // asset's non-source-language variants side by side instead of one at a
+  // time -- the same demo publish that took ~4x one variant's translate+test
+  // time now takes ~1x, plus whatever the queue depth beyond `concurrency`
+  // adds.
+  await Promise.all(
+    Array.from({ length: workerConfig.concurrency }, (_, slot) => workerLoop(`${workerConfig.workerId}-${slot}`))
+  )
+
+  if (workerConfig.exitWhenIdle) {
+    console.log("Queue drained, exiting (WORKER_EXIT_WHEN_IDLE=true)")
+  }
+}
+
+async function workerLoop(slotWorkerId: string) {
   for (;;) {
-    const claimed = await claimNextVariant(workerConfig.workerId, workerConfig.claimTimeoutMinutes)
+    const claimed = await claimNextVariant(slotWorkerId, workerConfig.claimTimeoutMinutes)
 
     if (!claimed) {
       if (workerConfig.exitWhenIdle) {
-        console.log("Queue drained, exiting (WORKER_EXIT_WHEN_IDLE=true)")
         return
       }
       await sleep(workerConfig.pollIntervalMs)
