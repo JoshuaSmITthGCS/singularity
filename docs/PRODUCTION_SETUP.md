@@ -69,11 +69,45 @@ SUPABASE_SERVICE_ROLE_KEY       🔴
 
 ## A2. The translation worker host  ⚠️ THE HARD BLOCKER
 
-The worker is a long‑running Node process that calls Docker to run the 5 language
-sandbox images (`worker/src/test-runner.ts` talks to the local Docker socket via
-`dockerode`). **Netlify cannot run it** (serverless).
+The worker calls Docker to run the 5 language sandbox images
+(`worker/src/test-runner.ts` talks to the local Docker socket via `dockerode`).
+**Netlify cannot run it** (serverless). Two ways to actually run it, depending
+on whether you want it free or always-hot:
 
-**Decision (made for you): a plain VM with Docker installed, not Fly.io/Railway.**
+### Option 1 — free: GitHub Actions, scheduled (`.github/workflows/worker.yml`)
+
+Since this repo is public, Actions minutes cost nothing. The workflow checks
+out the repo, builds the 5 sandbox images, and runs the worker in
+"drain mode" (`WORKER_EXIT_WHEN_IDLE=true` — claim and process everything
+currently queued, then exit, instead of polling forever) on a cron
+(`*/10 * * * *` by default) plus manual `workflow_dispatch`.
+
+**Setup:** add these as repo secrets (Settings → Secrets and variables →
+Actions): `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+`ANTHROPIC_API_KEY` (`ANTHROPIC_MODEL` optional). Nothing else to install or
+provision — no VM, no new account, no payment method.
+
+**Tradeoff:** jobs only get picked up when the workflow fires, not within
+seconds like a persistent worker — GitHub doesn't guarantee exact schedule
+timing either, so treat pickup as "usually within ~10-15 minutes," not a hard
+SLA. Fine for a public demo; not what you want if buyers are watching a
+progress bar expecting the "1-3 minutes" the `/try-it` copy currently
+promises — tighten the cron to `*/5` or switch to Option 2 if that gap
+matters.
+
+Safe to run this at the same time as a manually-started local worker (e.g.
+Jay remote-starting his own machine) — `claim_next_variant`'s
+`FOR UPDATE SKIP LOCKED` means two workers polling the same queue never
+double-claim a job. In that setup this workflow is just a backstop: if the
+local machine is off or nobody's remote-started it, queued jobs still get
+picked up within the cron window instead of sitting forever.
+
+### Option 2 — always-hot: a VM you control, running the worker via systemd
+
+Pick this when jobs need to start picking up within seconds, not minutes —
+e.g. once `/try-it` traffic is real, not just occasional testing.
+
+**Decision: a plain VM with Docker installed, not Fly.io/Railway.**
 Those platforms boot each app straight from an OCI image into a microVM with
 **no Docker daemon inside** — there's nothing for `dockerode` to talk to, and
 they don't support the nested Docker-in-Docker this worker needs. A VM you

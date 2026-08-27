@@ -196,3 +196,10 @@ export function findDemoSnippet(id: string): DemoSnippet | undefined {
 // language plus real Docker compute, so it needs a floor even with a fixed
 // snippet whitelist.
 export const DEMO_PUBLISH_COOLDOWN_MINUTES = 10
+
+// Hard ceiling on demo publishes across ALL visitors per rolling hour. The
+// per-IP cooldown alone doesn't bound worst-case cost: anyone rotating
+// source IPs (VPN/proxy pool) could still fire unlimited real Claude +
+// Docker runs against the platform's paid API key. This caps total exposure
+// regardless of how many distinct IPs are used.
+export const DEMO_PUBLISH_GLOBAL_CAP_PER_HOUR = 20
