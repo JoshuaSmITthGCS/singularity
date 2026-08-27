@@ -1,0 +1,56 @@
+name: Translation worker (scheduled drain)
+
+# Runs the translation worker as a bounded job instead of a persistent
+# process: build the 5 sandbox images, drain whatever's currently queued in
+# asset_variants (WORKER_EXIT_WHEN_IDLE=true makes it exit as soon as the
+# queue is empty instead of polling forever), then stop. This is the
+# free/no-infra alternative to worker/deploy/setup.sh's always-on VM — this
+# repo is public, so Actions minutes cost nothing, but jobs only get picked
+# up when this workflow fires (see the cron cadence below), not within
+# seconds like a persistent worker.
+#
+# Requires these repo secrets (Settings -> Secrets and variables -> Actions):
+#   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY
+# ANTHROPIC_MODEL is optional (defaults in worker/src/config.ts).
+
+on:
+  schedule:
+    # GitHub doesn't guarantee exact timing on schedule triggers (can slip
+    # under load), so treat this as "usually within ~10-15 minutes," not a
+    # hard SLA. Tighten to */5 if that's not fast enough once secrets are in.
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: singularity-worker
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build sandbox images
+        run: pnpm run worker:build-images
+
+      - name: Drain the queue
+        run: pnpm --dir worker exec tsx src/index.ts
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL }}
+          WORKER_ID: gha-scheduled-worker
+          WORKER_EXIT_WHEN_IDLE: "true"

@@ -14,6 +14,10 @@ async function main() {
     const claimed = await claimNextVariant(workerConfig.workerId, workerConfig.claimTimeoutMinutes)
 
     if (!claimed) {
+      if (workerConfig.exitWhenIdle) {
+        console.log("Queue drained, exiting (WORKER_EXIT_WHEN_IDLE=true)")
+        return
+      }
       await sleep(workerConfig.pollIntervalMs)
       continue
     }

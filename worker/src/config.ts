@@ -12,6 +12,9 @@ export const workerConfig = {
   workerId: process.env.WORKER_ID || "worker-local-1",
   pollIntervalMs: Number(process.env.WORKER_POLL_INTERVAL_MS || 5000),
   claimTimeoutMinutes: Number(process.env.WORKER_CLAIM_TIMEOUT_MINUTES || 10),
+  // For scheduled/CI-style runners (no persistent host to poll from): drain
+  // whatever's queued right now, then exit cleanly instead of polling forever.
+  exitWhenIdle: process.env.WORKER_EXIT_WHEN_IDLE === "true",
 }
 
 function requireEnv(name: string) {
