@@ -95,6 +95,13 @@ progress bar expecting the "1-3 minutes" the `/try-it` copy currently
 promises — tighten the cron to `*/5` or switch to Option 2 if that gap
 matters.
 
+Safe to run this at the same time as a manually-started local worker (e.g.
+Jay remote-starting his own machine) — `claim_next_variant`'s
+`FOR UPDATE SKIP LOCKED` means two workers polling the same queue never
+double-claim a job. In that setup this workflow is just a backstop: if the
+local machine is off or nobody's remote-started it, queued jobs still get
+picked up within the cron window instead of sitting forever.
+
 ### Option 2 — always-hot: a VM you control, running the worker via systemd
 
 Pick this when jobs need to start picking up within seconds, not minutes —
