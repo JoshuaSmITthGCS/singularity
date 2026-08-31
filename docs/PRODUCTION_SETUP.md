@@ -325,6 +325,93 @@ After B2/B3 are corrected and deployed:
 
 ---
 
+# SECTION C — Optional: Wake-on-LAN utility
+
+`/wol` (and `POST /api/wol`) is a personal utility bolted onto the site, unrelated
+to the marketplace product — it lets the admin account send a WOL magic packet to
+wake a home PC for live demos. Restricted to `ADMIN_USER_ID`, same gate as `/admin`.
+
+**Requires:** your home router forwarding a UDP port to its local broadcast address
+(consult your router's docs — often called "WOL forwarding" or a port forward to
+`x.x.x.255`), since a magic packet doesn't route past the LAN on its own.
+
+**Env vars** (set alongside the others in A4, frontend host only — not the worker):
+```
+WOL_TARGET_HOST=<your home's public IP or DDNS hostname>   🟢-ish (not secret, but env only)
+WOL_TARGET_PORT=9                                            (or whatever port you forward)
+WOL_TARGET_MAC=AA:BB:CC:DD:EE:FF                              (target PC's MAC address)
+```
+Leave unset to leave the feature disabled — the route 500s with `MISCONFIGURED` until
+all three are set correctly.
+
+**Router setup — TP-Link Archer AX21, target PC running Windows:**
+
+1. **Reserve a static LAN IP for the PC** — Advanced → Network → DHCP Server →
+   Address Reservation. Bind its MAC to a fixed IP.
+2. **Port forward to the LAN broadcast address** — Advanced → NAT Forwarding →
+   Virtual Servers → Add:
+   - Service Type: Custom
+   - External Port: `9` (must match `WOL_TARGET_PORT`)
+   - Internal IP: `192.168.0.255` (your LAN's broadcast address — check the Archer's
+     Network Map if your subnet isn't `192.168.0.x`)
+   - Internal Port: `9`
+   - Protocol: UDP
+
+   If the firmware rejects a `.255` internal IP, forward to the PC's reserved IP
+   from step 1 instead — unicast delivery works for WOL in most setups since the
+   switch already has that IP/MAC pair bound to a port.
+3. **Set up Dynamic DNS** — Advanced → Network → Dynamic DNS (TP-Link's built-in
+   DDNS or No-IP) — so `WOL_TARGET_HOST` survives the home IP changing. Use the
+   DDNS hostname as `WOL_TARGET_HOST`.
+4. **Enable WOL on the Windows PC:**
+   - Device Manager → network adapter → Properties → Power Management → check
+     "Allow this device to wake the computer."
+   - Same dialog, Advanced tab → "Wake on Magic Packet" → Enabled.
+   - Control Panel → Power Options → "Choose what the power buttons do" →
+     disable **Fast Startup**. Fast Startup hibernates instead of a true
+     shutdown on most boards, which blocks WOL from a fully "off" state.
+   - Confirm Wake-on-LAN is enabled in BIOS/UEFI (varies by motherboard —
+     usually under Power Management, "Resume by PCI-E/PME" or similar).
+
+**Cold boot vs. sleep — what the magic packet actually gets you:**
+
+Waking the worker PC is not one behavior; it's two, depending on the PC's state
+when the packet arrives. Get this wrong and you end up writing a custom
+startup script to solve a problem that either doesn't exist or needs a
+different fix.
+
+- **PC was asleep (not shut down):** the magic packet resumes the exact
+  session that was running before sleep. If Docker Desktop and the worker
+  (`pm2`, see below) were already running, they're still running the instant
+  it wakes — there is nothing to "auto-start." No script needed at all.
+- **PC was fully shut down:** the magic packet powers the machine on, but that
+  is a *cold boot* — it lands at the Windows lock screen, not a logged-in
+  session, unless Windows auto-login is configured for that account. Nothing
+  else can run (Docker, the worker, anything) until something signs in.
+
+Getting a cold boot to "just work" for a demo needs three pieces chained
+together, none of them a custom script:
+
+1. **Windows auto-login** for the worker account, so a cold boot reaches a
+   desktop on its own (`netplwiz` → uncheck "Users must enter a password" for
+   that account, or set `DefaultUserName`/`DefaultPassword` in
+   `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon`).
+2. **Docker Desktop → Settings → General → "Start Docker Desktop when you log
+   in"** — enabled. The worker can't run `dockerode` against a daemon that
+   isn't up yet.
+3. **The pm2 setup already in this repo** (`worker/deploy/windows/setup.ps1`
+   + `ecosystem.config.js`) — `pm2-windows-startup` already resurrects the
+   worker process on login. If that setup has been run once, there's nothing
+   left to build; a hand-rolled Task Scheduler + Python/PowerShell script is
+   solving a problem this already covers, and adds a second, uncoordinated
+   thing trying to start the same worker.
+
+The one thing pm2 can't fix on its own is #1 — it only runs once something
+logs in — so auto-login is the piece worth actually verifying if a magic
+packet after a full shutdown isn't ending in a running worker.
+
+---
+
 # ✅ PASTE‑BACK TEMPLATE (fill in only the 🟢 values, then send to Claude)
 
 > Do **not** put any 🔴 secret here. Those go straight into Netlify / your worker host.
