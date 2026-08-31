@@ -339,6 +339,43 @@ all three are set correctly.
    - Confirm Wake-on-LAN is enabled in BIOS/UEFI (varies by motherboard —
      usually under Power Management, "Resume by PCI-E/PME" or similar).
 
+**Cold boot vs. sleep — what the magic packet actually gets you:**
+
+Waking the worker PC is not one behavior; it's two, depending on the PC's state
+when the packet arrives. Get this wrong and you end up writing a custom
+startup script to solve a problem that either doesn't exist or needs a
+different fix.
+
+- **PC was asleep (not shut down):** the magic packet resumes the exact
+  session that was running before sleep. If Docker Desktop and the worker
+  (`pm2`, see below) were already running, they're still running the instant
+  it wakes — there is nothing to "auto-start." No script needed at all.
+- **PC was fully shut down:** the magic packet powers the machine on, but that
+  is a *cold boot* — it lands at the Windows lock screen, not a logged-in
+  session, unless Windows auto-login is configured for that account. Nothing
+  else can run (Docker, the worker, anything) until something signs in.
+
+Getting a cold boot to "just work" for a demo needs three pieces chained
+together, none of them a custom script:
+
+1. **Windows auto-login** for the worker account, so a cold boot reaches a
+   desktop on its own (`netplwiz` → uncheck "Users must enter a password" for
+   that account, or set `DefaultUserName`/`DefaultPassword` in
+   `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon`).
+2. **Docker Desktop → Settings → General → "Start Docker Desktop when you log
+   in"** — enabled. The worker can't run `dockerode` against a daemon that
+   isn't up yet.
+3. **The pm2 setup already in this repo** (`worker/deploy/windows/setup.ps1`
+   + `ecosystem.config.js`) — `pm2-windows-startup` already resurrects the
+   worker process on login. If that setup has been run once, there's nothing
+   left to build; a hand-rolled Task Scheduler + Python/PowerShell script is
+   solving a problem this already covers, and adds a second, uncoordinated
+   thing trying to start the same worker.
+
+The one thing pm2 can't fix on its own is #1 — it only runs once something
+logs in — so auto-login is the piece worth actually verifying if a magic
+packet after a full shutdown isn't ending in a running worker.
+
 ---
 
 # ✅ PASTE‑BACK TEMPLATE (fill in only the 🟢 values, then send to Claude)
