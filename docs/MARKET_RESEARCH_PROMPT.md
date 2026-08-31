@@ -1,5 +1,10 @@
 # Market Research Prompt — Is Singularity a Need?
 
+> **This brief has been run.** Results: `docs/MARKET_RESEARCH_FINDINGS.md`
+> (2026-08-31). Verdict: not validated as specified — four of six hypotheses
+> failed their kill criteria. Re-run this brief after acting on those findings,
+> or to test a pivot.
+
 Paste everything below the line into a research-capable assistant (web search
 enabled). It is self-contained: it does not assume the reader has seen the
 codebase.
