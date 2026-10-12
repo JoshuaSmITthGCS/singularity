@@ -47,9 +47,9 @@ Covers the readiness audit that feeds Item 3, plus drafts of Items 1, 2 and 4.
 | Public walkthrough with no signup | **LIVE** | `/try-it`, rate-limited, fixed sample snippets only (`src/lib/demo-walkthrough.ts`) |
 | Concrete cross-engine example | **LIVE** | `demo/` Unity C# → Unreal C++ jump controller with unit/axis conversion |
 | Contributor revenue split | **LIVE** | 70 / 25 / 5, atomic settlement RPC (migration `20260602…`, not applied to a live DB per audit §13) |
-| Attribution of a component into a customer artifact | **PARTIAL** | `content_hash`, `adaptation_log`, `repos`, procurement records exist per asset. No manifest tying several components into one composed deliverable |
-| Assemble a simulation from components | **PLANNED** | No code |
-| Scenario state / action / alternatives / rationale / outcome capture | **PLANNED** | No tables, UI or API |
+| Attribution of a component into a customer artifact | **LIVE (demo only)** | `/pilot-demo` shows hash, version, adaptation note and contributor share for two fixture components. Underlying: | `content_hash`, `adaptation_log`, `repos`, procurement records exist per asset. No manifest tying several components into one composed deliverable |
+| Assemble a simulation from components | **PLANNED** | Walkthrough at `/pilot-demo` uses a hand-built toy model, labelled as such |
+| Scenario state / action / alternatives / rationale / outcome capture | **LIVE (demo only)** | `/pilot-demo` captures records in page state and exports JSONL; no database, API or persistence |
 | Expert participant sessions, recordings, consent | **PLANNED** | No code |
 | Held-out evaluation of decision data | **PLANNED** | No code |
 | Manufacturing / workstation-layout components | **PLANNED** | Catalog is game scripting; none seeded for this domain |

@@ -49,6 +49,17 @@ export const clientEnvConfigSchema = z.object({
   pr_mode: z.boolean().default(true),
 })
 
+// Pilot walkthrough: one expert decision, per the enterprise memo's Capture stage.
+export const decisionRecordSchema = z.object({
+  scenario_id: z.string().trim().min(1).max(100),
+  participant_role: z.enum(["operator", "process_engineer", "supervisor", "other"]),
+  chosen_layout_id: z.string().trim().min(1).max(100),
+  alternatives_considered: z.array(z.string().trim().min(1).max(100)).max(10).default([]),
+  rationale: z.string().trim().min(1).max(2000),
+  reviewer_feedback: z.string().trim().max(2000).optional(),
+  consent_recorded: z.boolean(),
+})
+
 // §5.2.1 structured filter + §5.2.2 free-text search params.
 export const searchQuerySchema = z.object({
   q: z.string().trim().max(300).optional(),
