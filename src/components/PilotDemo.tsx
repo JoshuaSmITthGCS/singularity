@@ -174,6 +174,51 @@ export function PilotDemo({
         ))}
       </section>
 
+      <Panel title="Why would a developer publish here?" actions={<Status live={false} label="Example" />}>
+        <p className="text-sm text-ink-2">
+          <strong>Example scenario:</strong> an independent developer built a combat-cooldown system for Unity
+          (C#) and sells it to other Unity teams. This is a hypothetical, but the situation is common.
+        </p>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div className="rounded border border-rule bg-sunken p-3">
+            <div className="tag text-ink-3">Today</div>
+            <ul className="mt-2 list-disc pl-5 text-sm leading-5 text-ink-2">
+              <li>The code only reaches Unity users.</li>
+              <li>
+                Studios do switch engines. Unity&apos;s 2023 pricing change pushed many teams toward Unreal and
+                Godot, and those buyers can no longer use the code.
+              </li>
+              <li>Rewriting it by hand for another engine is weeks of unpaid work, so it rarely happens.</li>
+              <li>Buyers cannot tell whether it works in their setup until after they have paid.</li>
+            </ul>
+          </div>
+          <div className="rounded border border-rule bg-sunken p-3">
+            <div className="tag text-ink-3">With Singularity</div>
+            <ul className="mt-2 list-disc pl-5 text-sm leading-5 text-ink-2">
+              <li>The developer publishes once, with tests.</li>
+              <li>
+                The code is offered in up to five languages (TypeScript, JavaScript, Java, C#, C++), so the same
+                work can reach up to five audiences instead of one.
+              </li>
+              <li>In the product, each version is built and tested before it is listed, so buyers see proof first.</li>
+              <li>The developer earns {contributorSharePct}% of every sale in any language, with no porting work.</li>
+            </ul>
+          </div>
+        </div>
+        <p className="mt-3 text-sm text-ink-2">
+          <strong>The factory version, which is this demo:</strong> a consultant wrote the layout tool in
+          TypeScript. One plant&apos;s software team runs .NET, and a robotics team works in C++. Without
+          Singularity, neither can use it. With it, both can license it, and the consultant is credited on every
+          simulation that uses it.
+        </p>
+        <p className="mt-3 text-sm text-ink-3">
+          <strong>Where it does not help:</strong> code that depends heavily on one engine&apos;s internals, such
+          as shaders or engine-specific physics, usually still needs a hand rewrite. It works best for logic like
+          pathfinding, inventory, or cost calculations, and the code must come with tests. A developer without
+          tests cannot publish yet.
+        </p>
+      </Panel>
+
       <Panel title="1 · The code a developer already wrote" actions={<Status live />}>
         <p className="text-sm text-ink-2">
           This small tool answers one factory question: <strong>how many metres does material travel in a
