@@ -7,7 +7,7 @@ import {
   travelDistance,
   type DecisionRecord,
 } from "@/lib/pilot-demo"
-import { COMPONENT_SOURCES, SCENARIOS, buildManifest } from "@/lib/pilot-demo-fixtures"
+import { COMPONENT_SOURCES, FLOW_COST_TS, SCENARIOS, TRANSLATION_TARGETS, buildManifest } from "@/lib/pilot-demo-fixtures"
 import { decisionRecordSchema } from "@/lib/validation"
 
 describe("travelDistance", () => {
@@ -99,7 +99,7 @@ describe("component manifest", () => {
     expect(buildManifest()[1].content_hash).toBe(manifest[1].content_hash)
     expect(manifest[1].adapted_hash).not.toBeNull()
     expect(manifest[1].adapted_hash).not.toBe(manifest[1].content_hash)
-    expect(COMPONENT_SOURCES.flowCostAdapted).not.toBe(COMPONENT_SOURCES.flowCost)
+    expect(COMPONENT_SOURCES.flowCost).not.toBe(FLOW_COST_TS)
   })
 
   it("leaves unmodified components without an adaptation record", () => {
@@ -111,5 +111,22 @@ describe("component manifest", () => {
     // Low complexity, unscored: 50 cents → 35 cents to the developer.
     expect(manifest[0].price_cents).toBe(50)
     expect(manifest[0].contributor_share_cents).toBe(35)
+  })
+})
+
+describe("translation targets", () => {
+  it("records C++ results that match the TypeScript model on the current layout", () => {
+    const cpp = TRANSLATION_TARGETS.find((t) => t.id === "cpp")
+    const [steady, surge] = SCENARIOS.map(
+      (s) => evaluateScenario(s).find((o) => o.layoutId === s.baselineLayoutId)?.metresPerShift
+    )
+    expect(cpp?.recordedResult).toEqual({ steadyState: steady, reworkSurge: surge })
+  })
+
+  it("never claims a result for a language that was not run", () => {
+    for (const target of TRANSLATION_TARGETS) {
+      if (target.id === "csharp") expect(target.recordedResult).toBeNull()
+      expect(target.changes.length).toBeGreaterThan(0)
+    }
   })
 })

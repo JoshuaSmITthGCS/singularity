@@ -16,6 +16,7 @@ import {
   type DecisionRecord,
   type Layout,
   type Scenario,
+  type TranslationTarget,
 } from "@/lib/pilot-demo"
 import { decisionRecordSchema } from "@/lib/validation"
 import { formatMoney } from "@/lib/utils"
@@ -27,9 +28,25 @@ const ROLES = [
   ["other", "Other"],
 ] as const
 
+const HOW_IT_WORKS = [
+  { title: "A developer shares code", body: "Someone has already written useful code, for example a tool that measures how far material travels across a factory floor." },
+  { title: "Singularity rewrites it", body: "The same code is translated into the language a buyer's team actually uses, with unit and naming differences handled." },
+  { title: "It is checked before it is sold", body: "In the product, each rewritten version is built and tested in an isolated sandbox. Only versions that pass are offered." },
+  { title: "An expert uses it, the developer is paid", body: "The code powers a simulation. An expert's decisions are recorded, and the original developer earns a share." },
+]
+
 // Status colors encode verification state, so live/planned uses accent/neutral.
-function Status({ live }: { live: boolean }) {
-  return <Badge tone={live ? "accent" : "neutral"}>{live ? "Live" : "Planned"}</Badge>
+function Status({ label, live }: { label?: string; live: boolean }) {
+  return <Badge tone={live ? "accent" : "neutral"}>{label ?? (live ? "Live" : "Planned")}</Badge>
+}
+
+function CodeBlock({ title, code }: { title: string; code: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="tag mb-1 text-ink-4">{title}</div>
+      <pre className="mono max-h-80 overflow-auto rounded border border-rule bg-sunken p-3 text-xs leading-5">{code}</pre>
+    </div>
+  )
 }
 
 function LayoutMap({ layout, highlight }: { layout: Layout; highlight: boolean }) {
@@ -60,18 +77,21 @@ export function PilotDemo({
   scenarios,
   manifest,
   contributorSharePct,
-  flowCostSource,
-  flowCostAdaptedSource,
+  originalSource,
+  targets,
 }: {
   scenarios: Scenario[]
   manifest: ComponentProvenance[]
   contributorSharePct: number
-  flowCostSource: string
-  flowCostAdaptedSource: string
+  originalSource: string
+  targets: TranslationTarget[]
 }) {
   const [scenarioId, setScenarioId] = useState(scenarios[0].id)
   const scenario = scenarios.find((s) => s.id === scenarioId) ?? scenarios[0]
   const outcomes = useMemo(() => evaluateScenario(scenario), [scenario])
+
+  const [targetId, setTargetId] = useState(targets[0].id)
+  const target = targets.find((t) => t.id === targetId) ?? targets[0]
 
   const [chosen, setChosen] = useState("")
   const [role, setRole] = useState<string>("process_engineer")
@@ -136,42 +156,133 @@ export function PilotDemo({
     ? records.reduce((sum, r) => sum + recordCompleteness(r), 0) / records.length
     : null
 
+  // The TypeScript answer for the layout the factory runs today, computed live.
+  const liveResults = scenarios.map((s) => {
+    const base = evaluateScenario(s).find((o) => o.layoutId === s.baselineLayoutId)
+    return { id: s.id, title: s.title, metres: base?.metresPerShift ?? 0 }
+  })
+
   return (
     <div className="grid gap-5">
-      <Panel title="1 · Component source" actions={<Status live />}>
+      <section aria-label="How it works" className="grid gap-3 md:grid-cols-4">
+        {HOW_IT_WORKS.map((step, i) => (
+          <div key={step.title} className="rounded border border-rule bg-surface p-3">
+            <div className="tag text-ink-4">Step {i + 1}</div>
+            <div className="mt-1 text-sm font-medium text-ink">{step.title}</div>
+            <p className="mt-1 text-sm leading-5 text-ink-2">{step.body}</p>
+          </div>
+        ))}
+      </section>
+
+      <Panel title="1 · The code a developer already wrote" actions={<Status live />}>
         <p className="text-sm text-ink-2">
-          Components arrive with a content hash, a version, and any customer adaptation. These two are
-          demo fixtures written for this walkthrough, not a real contributor&apos;s repository.
+          This small tool answers one factory question: <strong>how many metres does material travel in a
+          shift?</strong> It multiplies the number of trips between each pair of stations by the distance
+          between them. It is written in TypeScript, so a team on a different stack could not use it as is.
         </p>
-        <ul className="mt-3 grid gap-3">
+        <div className="mt-3">
+          <CodeBlock title="Original · TypeScript" code={originalSource} />
+        </div>
+        <ul className="mt-3 grid gap-2 md:grid-cols-2">
           {manifest.map((c) => (
             <li key={c.id} className="rounded border border-rule bg-sunken p-3 text-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="mono font-medium text-ink">{c.name}@{c.version}</span>
-                <span className="tag text-ink-4">{c.origin}</span>
-              </div>
-              <dl className="mono mt-2 grid gap-1 text-xs text-ink-3">
-                <div>sha256 {c.content_hash.slice(0, 16)}…</div>
-                {c.adapted_hash ? <div>adapted sha256 {c.adapted_hash.slice(0, 16)}…</div> : null}
-              </dl>
-              {c.adaptation_note ? <p className="mt-2 text-ink-2">{c.adaptation_note}</p> : null}
+              <div className="mono font-medium text-ink">{c.name}@{c.version}</div>
+              <div className="mono mt-1 text-xs text-ink-3">fingerprint (SHA-256) {c.content_hash.slice(0, 16)}…</div>
+              {c.adapted_hash ? (
+                <div className="mono text-xs text-ink-3">with customer change (code shown above) {c.adapted_hash.slice(0, 16)}…</div>
+              ) : null}
+              {c.adaptation_note ? <p className="mt-1.5 text-ink-2">{c.adaptation_note}</p> : null}
+              <p className="tag mt-1.5 text-ink-4">{c.origin}</p>
             </li>
           ))}
         </ul>
-        <details className="mt-3 text-sm">
-          <summary className="cursor-pointer text-ink-3">Show the adaptation diff target</summary>
-          <div className="mt-2 grid gap-3 md:grid-cols-2">
-            <pre className="mono overflow-x-auto rounded border border-rule bg-sunken p-3 text-xs">{flowCostSource}</pre>
-            <pre className="mono overflow-x-auto rounded border border-rule bg-sunken p-3 text-xs">{flowCostAdaptedSource}</pre>
-          </div>
-        </details>
+        <p className="mt-2 text-xs text-ink-3">
+          A fingerprint is a short code computed from the exact text. If one character changes, the fingerprint
+          changes, so every use of the code can be traced to a specific version.
+        </p>
       </Panel>
 
-      <Panel title="2 · Simulation behavior" actions={<Status live />}>
+      <Panel title="2 · The same code, rewritten for another system" actions={<Status live={false} label="Illustrative" />}>
         <p className="text-sm text-ink-2">
-          A toy model: total material travel per shift, as trips × rectilinear distance between stations.
-          It runs deterministically in your browser. It is not validated against any real facility and says
-          nothing about real-world transfer.
+          A buyer&apos;s team might use C# (Unity, Godot, .NET) or C++ (Unreal, robotics). Pick one to see the
+          rewrite side by side. These two versions were written by hand for this demo. In the product,
+          Claude produces them and a sandbox must pass them before they are sold.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Target language">
+          {targets.map((t) => (
+            <Button
+              key={t.id}
+              variant={t.id === target.id ? "primary" : "secondary"}
+              size="sm"
+              aria-pressed={t.id === target.id}
+              onClick={() => setTargetId(t.id)}
+            >
+              {t.label}
+            </Button>
+          ))}
+        </div>
+        <p className="mt-2 text-sm text-ink-3">Runs in: {target.runsIn}</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <CodeBlock title="Before · TypeScript" code={originalSource} />
+          <CodeBlock title={`After · ${target.label}`} code={target.code} />
+        </div>
+
+        <h3 className="tag mt-4 text-ink-3">What changed, and why</h3>
+        <table className="mt-2 w-full text-sm">
+          <thead>
+            <tr className="tag text-left text-ink-4">
+              <th className="py-1 pr-3 font-normal">Before</th>
+              <th className="py-1 pr-3 font-normal">After</th>
+              <th className="py-1 font-normal">Why</th>
+            </tr>
+          </thead>
+          <tbody>
+            {target.changes.map((c) => (
+              <tr key={c.before + c.after} className="border-t border-rule align-top">
+                <td className="mono py-1.5 pr-3 text-xs">{c.before}</td>
+                <td className="mono py-1.5 pr-3 text-xs">{c.after}</td>
+                <td className="py-1.5 text-ink-2">{c.why}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="mt-4 rounded border border-rule bg-sunken p-3 text-sm">
+          <div className="tag text-ink-3">Same question, same answer?</div>
+          <p className="mt-1 text-ink-2">{target.evidence}</p>
+          <table className="mt-2 w-full text-sm">
+            <thead>
+              <tr className="tag text-left text-ink-4">
+                <th className="py-1 font-normal">Factory layout today</th>
+                <th className="py-1 font-normal">TypeScript (computed live)</th>
+                <th className="py-1 font-normal">{target.label} (recorded run)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {liveResults.map((r, i) => {
+                const recorded = target.recordedResult
+                  ? i === 0 ? target.recordedResult.steadyState : target.recordedResult.reworkSurge
+                  : null
+                return (
+                  <tr key={r.id} className="border-t border-rule">
+                    <td className="py-1.5">{r.title}</td>
+                    <td className="tabular mono py-1.5">{r.metres.toLocaleString()} m</td>
+                    <td className="tabular mono py-1.5">
+                      {recorded === null ? "not run" : `${recorded.toLocaleString()} m`}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      <Panel title="3 · Using the code: compare factory layouts" actions={<Status live />}>
+        <p className="text-sm text-ink-2">
+          The tool now powers a simple simulation of one assembly line with six stations. Lower travel means
+          less forklift time. It is a toy model, not validated against any real facility, and says nothing
+          about real-world results. Click a layout to select it.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {scenarios.map((s) => (
@@ -212,10 +323,11 @@ export function PilotDemo({
         </div>
       </Panel>
 
-      <Panel title="3 · Expert decision record" actions={<Status live />}>
+      <Panel title="4 · An expert's decision is recorded" actions={<Status live />}>
         <p className="text-sm text-ink-2">
-          Choose a layout above, then record why. Each record stores the scenario state, the action, the
-          alternatives, the rationale, the computed outcome, reviewer feedback, and the component ids used.
+          Choose a layout above, then record why. Each record keeps the situation, the choice, the options
+          not chosen, the expert&apos;s reasoning, the computed result, reviewer feedback, and which code
+          was used. This is the data an enterprise customer would use to evaluate or train an AI system.
           Records stay in this page and are lost on refresh; nothing is sent to a server.
         </p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -267,18 +379,18 @@ export function PilotDemo({
         ) : null}
       </Panel>
 
-      <Panel title="4 · Attribution and contributor share" actions={<Status live />}>
+      <Panel title="5 · The original developer gets paid" actions={<Status live />}>
         <p className="text-sm text-ink-2">
-          Every record carries the component ids it used. The share below applies the live {contributorSharePct}%
-          developer split to the marketplace&apos;s formula price for a low-complexity asset. It shows the arithmetic
-          only. Pilot pricing and the license event that triggers payment are not yet agreed.
+          Every record names the code it used, so credit follows the work. Below, the live {contributorSharePct}%
+          developer share is applied to the marketplace&apos;s formula price for a low-complexity asset. This
+          shows the arithmetic only. Pilot pricing and the licensing event that triggers payment are not yet agreed.
         </p>
         <table className="mt-3 w-full text-sm">
           <thead>
             <tr className="tag text-left text-ink-4">
-              <th className="py-1 font-normal">Component</th>
+              <th className="py-1 font-normal">Code used</th>
               <th className="py-1 font-normal">Formula price</th>
-              <th className="py-1 font-normal">Contributor share</th>
+              <th className="py-1 font-normal">Developer share</th>
             </tr>
           </thead>
           <tbody>
@@ -295,10 +407,11 @@ export function PilotDemo({
 
       <Panel title="Not built yet" actions={<Status live={false} />}>
         <ul className="list-disc pl-5 text-sm text-ink-2">
+          <li>The two rewrites above are hand-written examples. Nothing here ran through the Claude translation and Docker pipeline.</li>
+          <li>The C# version has not been compiled in this build.</li>
           <li>Assembling a simulation automatically from catalog components (this one is hand-built).</li>
           <li>Saving decision records to a database, participant recordings, and consent storage.</li>
           <li>Evaluation on held-out tasks against a baseline.</li>
-          <li>Docker verification of these components; they have not been run through the pipeline.</li>
           <li>Any real manufacturing components or customer data.</li>
         </ul>
       </Panel>

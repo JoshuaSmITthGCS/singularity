@@ -1,9 +1,10 @@
 import { Page, PageHeader } from "@/components/PageHeader"
 import { PilotDemo } from "@/components/PilotDemo"
 import {
-  COMPONENT_SOURCES,
   CONTRIBUTOR_SHARE_PCT,
+  FLOW_COST_TS,
   SCENARIOS,
+  TRANSLATION_TARGETS,
   buildManifest,
 } from "@/lib/pilot-demo-fixtures"
 
@@ -12,16 +13,16 @@ export default function PilotDemoPage() {
     <main>
       <PageHeader
         eyebrow="Enterprise pilot walkthrough"
-        title="From component to expert decision"
-        description="One reusable component, one small workstation-layout simulation, one captured expert decision, with attribution. Each step is labelled live or planned."
+        title="This code turns into this code"
+        description="Follow one small factory tool from the developer who wrote it, to a rewrite in another language, to a simulation where an expert's decision is recorded and the developer is credited. Each step says what is live and what is an example."
       />
       <Page>
         <PilotDemo
           scenarios={SCENARIOS}
           manifest={buildManifest()}
           contributorSharePct={CONTRIBUTOR_SHARE_PCT}
-          flowCostSource={COMPONENT_SOURCES.flowCost}
-          flowCostAdaptedSource={COMPONENT_SOURCES.flowCostAdapted}
+          originalSource={FLOW_COST_TS}
+          targets={TRANSLATION_TARGETS}
         />
       </Page>
     </main>

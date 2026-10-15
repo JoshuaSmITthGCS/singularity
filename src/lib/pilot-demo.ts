@@ -97,3 +97,21 @@ export type ComponentProvenance = {
   price_cents: number
   contributor_share_cents: number
 }
+
+// One "this code turns into this code" pair, with each change explained in
+// plain language for a non-engineer reader.
+export type TranslationChange = { before: string; after: string; why: string }
+
+export type TranslationTarget = {
+  id: string
+  label: string
+  runsIn: string
+  code: string
+  changes: TranslationChange[]
+  // How far the demo can vouch for this translation. Never "passed": nothing
+  // here ran through the Docker pipeline.
+  evidence: string
+  // metres per shift for [steady-state, rework-surge] on the current layout,
+  // recorded from a real run; null when the language could not be run here.
+  recordedResult: { steadyState: number; reworkSurge: number } | null
+}
