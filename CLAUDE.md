@@ -103,6 +103,7 @@ singularity/
 │   │   ├── page.tsx                      # Landing page
 │   │   ├── marketplace/                  # Browse grid + [assetId] detail
 │   │   ├── publish/                      # Publish wizard page
+│   │   ├── pilot-demo/                   # Enterprise pilot walkthrough (demo-only, client state)
 │   │   ├── dashboard/                    # Developer dashboard
 │   │   ├── procurements/                 # Purchase history + [id] delivery view
 │   │   ├── auth/callback/                # Supabase OAuth callback
@@ -127,6 +128,7 @@ singularity/
 │   │   ├── LanguageBadge, ProcurementStatus
 │   │   ├── PublishForm                   # publish wizard (source→catalog→pricing→verify)
 │   │   ├── PurchaseForm
+│   │   ├── PilotDemo                     # component → simulation → expert decision walkthrough
 │   │   ├── MarketplaceSearch             # search/filter UI
 │   │   ├── WhopConnectButton, WhopPayoutsButton, GitHubInstallButton
 │   │   └── AuthButton, ServiceNotice
@@ -139,6 +141,8 @@ singularity/
 │   │   ├── procurements/                 # delivery logic (PR / download), revenue split
 │   │   ├── taxonomy.ts                   # TagSchema controlled vocabulary (TRD §4.5)
 │   │   ├── pricing.ts                    # unit-economics pricing formula (TRD §7.4)
+│   │   ├── pilot-demo.ts                 # toy layout model, decision-record helpers (pure)
+│   │   ├── pilot-demo-fixtures.ts        # server-only fixtures + provenance hashing
 │   │   ├── validation.ts                 # all Zod schemas
 │   │   ├── api.ts                        # dataResponse / errorResponse envelopes (TRD §8.2)
 │   │   ├── constants.ts                  # languages, splits, limits

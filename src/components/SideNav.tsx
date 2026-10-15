@@ -27,6 +27,7 @@ const SECTIONS: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { href: "/marketplace", label: "Marketplace", icon: Search, hint: "Browse verified assets" },
       { href: "/try-it", label: "Try it live", icon: Play, hint: "Watch the pipeline run" },
+      { href: "/pilot-demo", label: "Pilot demo", icon: Play, hint: "Component to expert decision" },
       { href: "/procurements", label: "Deliveries", icon: Package, hint: "Your purchases" },
     ],
   },
